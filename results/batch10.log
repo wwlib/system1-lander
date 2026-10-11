@@ -1,0 +1,21 @@
+{"x":40} -> crash (off pad, vy -9.2 ≥ 4, vx 2.8 ≥ 2, tilt -0.35 ≥ 0.3) score=0.0 t=17.2s fuel=85 decisions=16 avg=1069ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (vy -9.8 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=16.8s fuel=86 decisions=18 avg=948ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -8.7 ≥ 4) score=0.0 t=13.2s fuel=90 decisions=14 avg=1010ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad, vx 2.6 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=20.8s fuel=75 decisions=20 avg=1058ms climb=0.0m rising=0.0s
+SUMMARY [nvidia] tev1:4b physics/rival/reckless: TS=1 landed 0/4, avg latency 1022 ms, n=68, input_tokens 2083, agree-with-rules 56%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 84%
+{"x":40} -> crash (off pad, tilt -0.35 ≥ 0.3) score=0.0 t=41.4s fuel=50 decisions=40 avg=1041ms climb=0.0m rising=5.1s
+{"x":135,"vx":2} -> LANDED score=6.2 {"base":9,"fuel_bonus":0.3,"vertical":-1.4,"horizontal":-1.6,"tilt":0,"off_center":-0.1} t=55.2s fuel=31 decisions=64 avg=863ms climb=0.0m rising=7.8s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -4.8 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=27.5s fuel=69 decisions=28 avg=985ms climb=0.0m rising=2.0s
+{"x":20,"y":140} -> crash (off pad, tilt 0.35 ≥ 0.3) score=0.0 t=50.3s fuel=38 decisions=51 avg=980ms climb=0.0m rising=7.2s
+SUMMARY [nvidia] tev1:4b physics/rival/careful: TS=1 landed 1/4, avg latency 953 ms, n=183, input_tokens 2071, agree-with-rules 49%, avg climb 0.0m, avg rising 5.5s, avg score 1.55, avg fuel left 47%
+{"x":40} -> crash (off pad, vx 4.2 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=19.5s fuel=78 decisions=18 avg=1084ms climb=0.0m rising=0.1s
+{"x":135,"vx":2} -> crash (vy -4.9 ≥ 4, vx 2.0 ≥ 2) score=0.0 t=17.9s fuel=81 decisions=20 avg=905ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -9.1 ≥ 4) score=0.0 t=13.0s fuel=91 decisions=14 avg=1002ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad, vy -5.1 ≥ 4, vx 2.8 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=20.0s fuel=78 decisions=20 avg=1033ms climb=0.0m rising=0.0s
+SUMMARY [nvidia] tev1:4b physics/rival/show-off: TS=1 landed 0/4, avg latency 1004 ms, n=72, input_tokens 2087, agree-with-rules 63%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 82%
+{"x":40} -> crash (off pad, tilt -0.35 ≥ 0.3) score=0.0 t=38.3s fuel=53 decisions=38 avg=1019ms climb=0.0m rising=2.9s
+{"x":135,"vx":2} -> crash (tilt -0.35 ≥ 0.3) score=0.0 t=47.3s fuel=42 decisions=53 avg=891ms climb=0.0m rising=6.3s
+{"x":80,"vx":-3,"y":100} -> LANDED score=6.9 {"base":9,"fuel_bonus":0.6,"vertical":-0.7,"horizontal":-0.7,"tilt":0,"off_center":-1.3} t=35.8s fuel=55 decisions=39 avg=922ms climb=0.0m rising=4.1s
+{"x":20,"y":140} -> crash (off pad, vy -7.1 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=41.4s fuel=53 decisions=42 avg=979ms climb=0.0m rising=1.5s
+SUMMARY [nvidia] tev1:4b physics/rival/fuel-miser: TS=1 landed 1/4, avg latency 948 ms, n=172, input_tokens 2090, agree-with-rules 52%, avg climb 0.0m, avg rising 3.7s, avg score 1.73, avg fuel left 51%
+BATCH10 DONE

@@ -1,0 +1,11 @@
+{"x":40} -> crash ( vy=-3.1 vx=-3.2 ang=-0.35) t=70.0s fuel=12 decisions=97 avg=712ms
+{"x":135,"vx":2} -> crash ( vy=-1.9 vx=1.2 ang=-0.35) t=65.6s fuel=17 decisions=95 avg=684ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-2.7 vx=2.0 ang=-0.35) t=59.3s fuel=26 decisions=92 avg=640ms
+{"x":20,"y":140} -> crash ( vy=-7.3 vx=-0.3 ang=0.35) t=82.2s fuel=0 decisions=124 avg=656ms
+{"x":20,"vx":1.7} -> crash ( vy=-1.7 vx=0.3 ang=-0.35) t=68.9s fuel=13 decisions=105 avg=653ms
+{"x":43,"vx":-1.2} -> crash (off pad vy=-3.5 vx=-3.0 ang=-0.35) t=52.2s fuel=35 decisions=52 avg=1003ms
+SUMMARY tev1:0.8b physics/multi: TS=1 landed 0/6, avg latency 699 ms, n=565, input_tokens 876, agree-with-rules 53%
+{"x":40} -> crash ( vy=-1.7 vx=-1.8 ang=-0.28) t=72.7s fuel=8 decisions=124 avg=1653ms
+{"x":135,"vx":2} -> crash ( vy=-0.9 vx=-3.1 ang=0.00) t=68.0s fuel=13 decisions=268 avg=702ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-1.6 vx=1.4 ang=0.35) t=59.6s fuel=25 decisions=253 avg=647ms
+{"x":20,"y":140} -> crash ( vy=-3.0 vx=1.8 ang=-0.25) t=79.8s fuel=0 decisions=325 avg=678ms

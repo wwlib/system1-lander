@@ -1,0 +1,23 @@
+tev1:0.8b multi: steer 27/30 (dir-only 27/29), thrust 15/20, avg 429 ms/decision, 993 input tokens/decision
+  bad dx=-6.1 vx=-2.6 model=left want=right ans={"near_ground":false,"fall_gt5":false,"fall_gt1":true,"fall_x10":true,"pad_right":false,"moving_right":false,"spd_gt3":false,"spd_x8":false}
+  bad dx=98.6 vx=2.8 model=right want=center ans={"near_ground":false,"fall_gt5":false,"fall_gt1":true,"fall_x10":true,"pad_right":true,"moving_right":true,"spd_gt3":false,"spd_x8":false}
+  bad dx=-15.1 vx=-2.9 model=left want=right ans={"near_ground":false,"fall_gt5":false,"fall_gt1":true,"fall_x10":true,"pad_right":false,"moving_right":false,"spd_gt3":false,"spd_x8":false}
+  badT alt=46 vy=-4.2 model=true want=false
+  badT alt=67 vy=-2.9 model=true want=false
+  badT alt=60 vy=-2.2 model=true want=false
+{"x":40} -> crash ( vy=-2.2 vx=-3.1 ang=-0.05) t=79.1s fuel=0 decisions=248 avg=311ms
+{"x":135,"vx":2} -> crash ( vy=-1.1 vx=1.3 ang=0.22) t=74.3s fuel=5 decisions=243 avg=298ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-0.7 vx=1.4 ang=0.00) t=66.2s fuel=15 decisions=211 avg=306ms
+{"x":20,"y":140} -> crash ( vy=-5.1 vx=-0.6 ang=-0.35) t=80.8s fuel=0 decisions=247 avg=320ms
+{"x":20,"vx":1.7} -> crash ( vy=-1.3 vx=-1.9 ang=0.00) t=73.3s fuel=7 decisions=228 avg=314ms
+{"x":43,"vx":-1.2} -> crash ( vy=-1.7 vx=-3.9 ang=-0.02) t=79.0s fuel=0 decisions=245 avg=315ms
+  bad {"t":2,"sent":{"alt_m":106.8,"vy_mps":-3.2,"vx_mps":1.7,"dx_to_pad_m":93.6,"angle_deg":20,"fuel_pct":100},"model":"burn_right","rule":"coast_right"}
+  bad {"t":76.8,"sent":{"alt_m":2.2,"vy_mps":-0.3,"vx_mps":-0.7,"dx_to_pad_m":-5.7,"angle_deg":-20,"fuel_pct":1},"model":"coast_left","rule":"coast_center"}
+  bad {"t":73.3,"sent":{"alt_m":1.1,"vy_mps":-0.6,"vx_mps":0.2,"dx_to_pad_m":7.2,"angle_deg":20,"fuel_pct":6},"model":"coast_right","rule":"coast_center"}
+  bad {"t":9.2,"sent":{"alt_m":111.1,"vy_mps":-2.5,"vx_mps":3.7,"dx_to_pad_m":92.4,"angle_deg":20,"fuel_pct":90},"model":"coast_left","rule":"coast_right"}
+  bad {"t":4.2,"sent":{"alt_m":99.4,"vy_mps":-2.7,"vx_mps":2.3,"dx_to_pad_m":102.9,"angle_deg":-20,"fuel_pct":97},"model":"burn_right","rule":"coast_right"}
+  bad {"t":6,"sent":{"alt_m":96.8,"vy_mps":-1.4,"vx_mps":2.3,"dx_to_pad_m":83.7,"angle_deg":-20,"fuel_pct":93},"model":"burn_right","rule":"coast_right"}
+SUMMARY [nvidia] tev1:0.8b physics/multi: TS=1 landed 0/6, avg latency 311 ms, n=1422, input_tokens 580, agree-with-rules 42%
+{"x":40} -> crash ( vy=-3.7 vx=3.1 ang=-0.15) t=80.3s fuel=0 decisions=678 avg=323ms
+{"x":135,"vx":2} -> crash ( vy=-4.7 vx=2.0 ang=-0.35) t=80.5s fuel=0 decisions=715 avg=305ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-0.9 vx=1.0 ang=0.00) t=73.5s fuel=7 decisions=648 avg=310ms

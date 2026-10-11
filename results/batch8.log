@@ -1,0 +1,21 @@
+{"x":40} -> LANDED score=7.8 {"base":9,"fuel_bonus":0.3,"vertical":-0.8,"horizontal":-0.5,"tilt":0,"off_center":-0.2} t=59.2s fuel=25 decisions=92 avg=638ms climb=0.0m rising=5.9s
+{"x":135,"vx":2} -> LANDED score=7.9 {"base":9,"fuel_bonus":0.2,"vertical":-0.8,"horizontal":-0.2,"tilt":0,"off_center":-0.3} t=60.1s fuel=24 decisions=98 avg=609ms climb=0.0m rising=6.2s
+{"x":80,"vx":-3,"y":100} -> LANDED score=7.5 {"base":9,"fuel_bonus":0.2,"vertical":-0.3,"horizontal":-0.9,"tilt":0,"off_center":-0.5} t=60.2s fuel=24 decisions=100 avg=594ms climb=0.0m rising=9.7s
+{"x":20,"y":140} -> LANDED score=6.0 {"base":9,"fuel_bonus":0.2,"vertical":-0.8,"horizontal":-1.8,"tilt":-0.6,"off_center":0} t=65.0s fuel=18 decisions=103 avg=625ms climb=0.0m rising=7.7s
+{"x":20,"vx":1.7} -> LANDED score=7.0 {"base":9,"fuel_bonus":0.3,"vertical":-0.4,"horizontal":-1.4,"tilt":0,"off_center":-0.5} t=58.9s fuel=26 decisions=93 avg=628ms climb=0.0m rising=6.3s
+{"x":43,"vx":-1.2} -> LANDED score=7.0 {"base":9,"fuel_bonus":0.1,"vertical":-0.6,"horizontal":-1.1,"tilt":0,"off_center":-0.4} t=69.4s fuel=12 decisions=111 avg=617ms climb=0.0m rising=11.2s
+SUMMARY [nvidia] tev1:4b physics/multi: TS=1 landed 6/6, avg latency 618 ms, n=597, input_tokens 420, agree-with-rules 60%, avg climb 0.0m, avg rising 7.9s, avg score 7.20, avg fuel left 22%
+{"x":40} -> LANDED score=8.8 {"base":9,"fuel_bonus":0.3,"vertical":-0.3,"horizontal":-0.1,"tilt":0,"off_center":-0.1} t=58.5s fuel=27 decisions=76 avg=765ms climb=0.0m rising=8.1s
+{"x":135,"vx":2} -> LANDED score=6.9 {"base":9,"fuel_bonus":0.3,"vertical":-1.4,"horizontal":-0.6,"tilt":0,"off_center":-0.4} t=59.0s fuel=27 decisions=87 avg=672ms climb=0.0m rising=6.4s
+{"x":80,"vx":-3,"y":100} -> LANDED score=7.7 {"base":9,"fuel_bonus":0.3,"vertical":-0.6,"horizontal":-1,"tilt":0,"off_center":0} t=54.8s fuel=31 decisions=77 avg=707ms climb=0.0m rising=9.6s
+{"x":20,"y":140} -> LANDED score=6.0 {"base":9,"fuel_bonus":0.2,"vertical":-2,"horizontal":-1.2,"tilt":0,"off_center":0} t=69.3s fuel=16 decisions=89 avg=773ms climb=0.0m rising=10.4s
+{"x":20,"vx":1.7} -> LANDED score=9.2 {"base":9,"fuel_bonus":0.3,"vertical":0,"horizontal":0,"tilt":0,"off_center":-0.1} t=53.0s fuel=35 decisions=63 avg=834ms climb=0.0m rising=6.5s
+{"x":43,"vx":-1.2} -> LANDED score=8.6 {"base":9,"fuel_bonus":0.3,"vertical":-0.2,"horizontal":-0.5,"tilt":0,"off_center":0} t=54.6s fuel=33 decisions=72 avg=754ms climb=0.0m rising=6.7s
+SUMMARY [nvidia] tev1:4b physics/multi2: TS=1 landed 6/6, avg latency 747 ms, n=464, input_tokens 563, agree-with-rules 52%, avg climb 0.0m, avg rising 7.9s, avg score 7.87, avg fuel left 28%
+{"x":40} -> crash (off pad, vx 2.4 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=30.2s fuel=64 decisions=34 avg=910ms climb=0.0m rising=0.1s
+{"x":135,"vx":2} -> LANDED score=8.1 {"base":9,"fuel_bonus":0.4,"vertical":-0.5,"horizontal":-0.6,"tilt":0,"off_center":-0.2} t=47.2s fuel=41 decisions=66 avg=714ms climb=0.0m rising=1.2s
+{"x":80,"vx":-3,"y":100} -> LANDED score=8.8 {"base":9,"fuel_bonus":0.5,"vertical":-0.2,"horizontal":-0.3,"tilt":0,"off_center":-0.2} t=41.5s fuel=48 decisions=55 avg=752ms climb=0.0m rising=1.5s
+{"x":20,"y":140} -> LANDED score=7.3 {"base":9,"fuel_bonus":0.4,"vertical":-0.3,"horizontal":-0.4,"tilt":0,"off_center":-1.4} t=48.4s fuel=42 decisions=57 avg=847ms climb=0.0m rising=0.5s
+{"x":20,"vx":1.7} -> crash (off pad) score=0.0 t=33.7s fuel=60 decisions=37 avg=918ms climb=0.0m rising=0.4s
+{"x":43,"vx":-1.2} -> LANDED score=8.2 {"base":9,"fuel_bonus":0.5,"vertical":0,"horizontal":-1,"tilt":0,"off_center":-0.3} t=42.5s fuel=47 decisions=54 avg=784ms climb=0.0m rising=1.1s
+SUMMARY [nvidia] tev1:4b physics/multi2p: TS=1 landed 4/6, avg latency 805 ms, n=303, input_tokens 563, agree-with-rules 39%, avg climb 0.0m, avg rising 0.8s, avg score 5.40, avg fuel left 50%

@@ -1,0 +1,11 @@
+player LANDED 6.6 t=41.8 avg 1287ms | rival(careful) LANDED 8.1 t=46.7 avg 1133ms | winner player
+player LANDED 7.8 t=64.3 avg 996ms | rival(careful) crash (vx -3.5 ≥ 2) avg 1109ms | winner player
+player crash (vx 2.7 ≥ 2) avg 1050ms | rival(careful) crash (off pad, vy -4.2 ≥ 4, vx 2.9 ≥ 2, tilt -0.35 ≥ 0.3) avg 1198ms | winner none
+player LANDED 7.6 t=55.7 avg 1044ms | rival(careful) crash (vy -5.9 ≥ 4, vx -3.1 ≥ 2, tilt -0.35 ≥ 0.3) avg 1208ms | winner player
+RACE SUMMARY vs careful: player landed 3/4, avg score 5.50, avg latency 1094 ms | rival landed 1/4, avg score 2.02, avg latency 1162 ms
+player LANDED 6.0 t=55.3 avg 775ms | rival(reckless) crash (vy -11.6 ≥ 4, vx -2.0 ≥ 2, tilt -0.35 ≥ 0.3) avg 1584ms | winner player
+player crash (tilt -0.35 ≥ 0.3) avg 769ms | rival(reckless) crash (off pad, vy -9.2 ≥ 4, vx -3.2 ≥ 2, tilt -0.35 ≥ 0.3) avg 1533ms | winner none
+player LANDED 6.6 t=80.2 avg 787ms | rival(reckless) crash (off pad, vy -5.6 ≥ 4, vx 2.4 ≥ 2, tilt 0.35 ≥ 0.3) avg 1438ms | winner player
+player crash (vx -2.3 ≥ 2) avg 808ms | rival(reckless) crash (vy -7.3 ≥ 4, vx -2.2 ≥ 2, tilt -0.35 ≥ 0.3) avg 1537ms | winner none
+RACE SUMMARY vs reckless: player landed 2/4, avg score 3.15, avg latency 785 ms | rival landed 0/4, avg score 0.00, avg latency 1523 ms
+BATCH11 DONE

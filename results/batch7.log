@@ -1,0 +1,7 @@
+{"x":40} -> crash (off pad vy=-7.8 vx=2.6 ang=0.35) t=17.9s fuel=83 decisions=23 avg=780ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash ( vy=-4.5 vx=0.2 ang=0.35) t=24.5s fuel=72 decisions=35 avg=701ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad vy=-6.4 vx=1.8 ang=0.00) t=15.5s fuel=85 decisions=21 avg=740ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad vy=-6.0 vx=3.0 ang=0.00) t=21.5s fuel=78 decisions=29 avg=748ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad vy=-7.0 vx=3.5 ang=0.35) t=19.0s fuel=82 decisions=23 avg=824ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad vy=-7.2 vx=3.1 ang=0.35) t=20.0s fuel=80 decisions=26 avg=791ms climb=0.0m rising=0.0s
+SUMMARY [nvidia] tev1:4b physics/multi2: TS=1 landed 0/6, avg latency 759 ms, n=157, input_tokens 1165, agree-with-rules 49%, avg climb 0.0m, avg rising 0.0s, avg fuel left 80%

@@ -1,0 +1,27 @@
+{"x":40} -> crash (off pad vy=0.3 vx=1.0 ang=-0.35) t=39.4s fuel=49 decisions=71 avg=1578ms
+{"x":135,"vx":2} -> crash ( vy=-1.3 vx=0.3 ang=0.35) t=36.2s fuel=55 decisions=73 avg=1408ms
+{"x":80,"vx":-3,"y":100} -> crash (off pad vy=-1.2 vx=0.2 ang=0.35) t=27.3s fuel=66 decisions=55 avg=1389ms
+{"x":20,"y":140} -> crash ( vy=-1.9 vx=1.2 ang=0.35) t=45.6s fuel=43 decisions=93 avg=1383ms
+SUMMARY tev1:4b physics/two_perm: TS=0.35 landed 0/4, avg latency 1438 ms, n=292, input_tokens 684, agree-with-rules 43%
+{"x":40} -> crash ( vy=-0.9 vx=-2.2 ang=-0.35) t=49.4s fuel=37 decisions=75 avg=1872ms
+{"x":135,"vx":2} -> crash ( vy=-2.5 vx=2.4 ang=0.35) t=46.1s fuel=43 decisions=71 avg=1857ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-3.2 vx=-0.9 ang=-0.35) t=79.7s fuel=0 decisions=120 avg=1873ms
+{"x":20,"y":140} -> crash (off pad vy=-2.7 vx=1.9 ang=0.35) t=39.1s fuel=52 decisions=59 avg=1894ms
+  bad {"t":2.7,"sent":{"alt_m":104.1,"vy_mps":-4.3,"vx_mps":1.9,"dx_to_pad_m":93.1,"angle_deg":20,"fuel_pct":100},"model":"burn_right","rule":"coast_right"}
+  bad {"t":29.2,"sent":{"alt_m":24.7,"vy_mps":-4.5,"vx_mps":2.7,"dx_to_pad_m":32.5,"angle_deg":-20,"fuel_pct":66},"model":"burn_left","rule":"burn_right"}
+  bad {"t":15.9,"sent":{"alt_m":63.1,"vy_mps":-3.3,"vx_mps":-2.7,"dx_to_pad_m":1.5,"angle_deg":-20,"fuel_pct":82},"model":"burn_right","rule":"coast_right"}
+  bad {"t":7.3,"sent":{"alt_m":70.9,"vy_mps":-4.3,"vx_mps":2.9,"dx_to_pad_m":53.3,"angle_deg":-20,"fuel_pct":94},"model":"burn_left","rule":"coast_right"}
+  bad {"t":45.7,"sent":{"alt_m":7,"vy_mps":1.1,"vx_mps":1,"dx_to_pad_m":4.4,"angle_deg":20,"fuel_pct":40},"model":"coast_right","rule":"coast_left"}
+  bad {"t":11.4,"sent":{"alt_m":87.9,"vy_mps":-3.2,"vx_mps":1.1,"dx_to_pad_m":93.8,"angle_deg":-20,"fuel_pct":88},"model":"burn_right","rule":"coast_right"}
+SUMMARY tev1:4b physics/facts: TS=0.35 landed 0/4, avg latency 1873 ms, n=325, input_tokens 1544, agree-with-rules 49%
+{"x":40} -> crash (off pad vy=1.1 vx=-2.6 ang=0.35) t=39.8s fuel=48 decisions=29 avg=1400ms
+{"x":135,"vx":2} -> crash ( vy=-2.9 vx=2.3 ang=0.35) t=33.4s fuel=59 decisions=24 avg=1406ms
+{"x":80,"vx":-3,"y":100} -> crash (off pad vy=0.9 vx=1.8 ang=-0.35) t=32.5s fuel=57 decisions=24 avg=1397ms
+{"x":20,"y":140} -> crash (off pad vy=3.0 vx=3.9 ang=-0.35) t=33.7s fuel=54 decisions=25 avg=1380ms
+SUMMARY tev1:4b physics/two_perm: TS=1 landed 0/4, avg latency 1396 ms, n=102, input_tokens 690, agree-with-rules 60%
+{"x":40} -> crash ( vy=-56.2 vx=3.2 ang=0.35) t=112.2s fuel=0 decisions=60 avg=1863ms
+{"x":135,"vx":2} -> crash (off pad vy=-5.8 vx=6.8 ang=0.05) t=73.2s fuel=10 decisions=40 avg=1867ms
+{"x":80,"vx":-3,"y":100} -> crash (off pad vy=-5.3 vx=5.8 ang=0.35) t=20.5s fuel=78 decisions=11 avg=1879ms
+{"x":20,"y":140} -> crash (off pad vy=-8.1 vx=5.6 ang=0.12) t=35.7s fuel=60 decisions=20 avg=1865ms
+SUMMARY tev1:4b physics/facts: TS=1 landed 0/4, avg latency 1866 ms, n=131, input_tokens 1540, agree-with-rules 60%
+BATCH3 DONE

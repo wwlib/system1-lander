@@ -1,0 +1,18 @@
+{
+  "name": "system1-lander",
+  "version": "0.1.0",
+  "description": "A lunar lander flown in real time by a small System 1 decision model (Ollama /v1/systemone).",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node lander/server.mjs",
+    "mock": "node lander/mock-systemone.mjs",
+    "hello": "node hello.mjs",
+    "headless": "node lander/tools/headless.mjs",
+    "race": "node lander/tools/race.mjs",
+    "eval": "node lander/tools/evalq.mjs",
+    "eval:multi": "node lander/tools/multieval.mjs",
+    "check": "for f in lander/*.mjs lander/providers/*.mjs lander/tools/*.mjs lander/tools/probes/*.mjs hello.mjs; do node --check $f || exit 1; done"
+  }
+}

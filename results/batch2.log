@@ -1,0 +1,17 @@
+{"x":40} -> crash (out of bounds) t=18.2s fuel=78 decisions=24 avg=750ms
+{"x":135,"vx":2} -> crash (out of bounds) t=47.6s fuel=37 decisions=56 avg=850ms
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) t=25.5s fuel=69 decisions=31 avg=842ms
+{"x":20,"y":140} -> crash (out of bounds) t=19.3s fuel=77 decisions=25 avg=780ms
+  bad {"t":5,"sent":{"alt_m":90.9,"vy_mps":-5.2,"vx_mps":4.4,"dx_to_pad_m":86.6,"angle_deg":20,"fuel_pct":98},"model":"burn_right","rule":"burn_left"}
+  bad {"t":13.1,"sent":{"alt_m":58.7,"vy_mps":-3.1,"vx_mps":14,"dx_to_pad_m":11.9,"angle_deg":20,"fuel_pct":86},"model":"coast_right","rule":"coast_left"}
+  bad {"t":17.9,"sent":{"alt_m":38.6,"vy_mps":-2.4,"vx_mps":-1.6,"dx_to_pad_m":35.1,"angle_deg":20,"fuel_pct":79},"model":"coast_left","rule":"coast_right"}
+  bad {"t":33.4,"sent":{"alt_m":21.8,"vy_mps":-1,"vx_mps":-2.4,"dx_to_pad_m":89,"angle_deg":20,"fuel_pct":58},"model":"burn_left","rule":"burn_right"}
+  bad {"t":3.3,"sent":{"alt_m":81,"vy_mps":-5.4,"vx_mps":-5.5,"dx_to_pad_m":68,"angle_deg":-20,"fuel_pct":100},"model":"burn_left","rule":"burn_right"}
+  bad {"t":23,"sent":{"alt_m":26.2,"vy_mps":1.6,"vx_mps":-1,"dx_to_pad_m":130.1,"angle_deg":20,"fuel_pct":69},"model":"coast_left","rule":"coast_right"}
+SUMMARY tev1:4b physics/hybrid_dir: TS=1 landed 0/4, avg latency 818 ms, n=136, input_tokens 262, agree-with-rules 53%
+{"x":40} -> crash (out of bounds) t=18.5s fuel=78 decisions=48 avg=766ms
+{"x":135,"vx":2} -> crash (out of bounds) t=57.1s fuel=28 decisions=134 avg=839ms
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) t=27.1s fuel=67 decisions=68 avg=788ms
+{"x":20,"y":140} -> crash (out of bounds) t=19.1s fuel=78 decisions=50 avg=740ms
+SUMMARY tev1:4b physics/hybrid_dir: TS=0.5 landed 0/4, avg latency 799 ms, n=300, input_tokens 262, agree-with-rules 50%
+BATCH2 DONE

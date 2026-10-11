@@ -1,0 +1,9 @@
+{"x":40} -> crash (vy -19.8 ≥ 4, vx 2.3 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=91.1s fuel=0 decisions=187 avg=479ms climb=11.2m rising=43.2s
+{"x":135,"vx":2} -> crash (vy -18.9 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=93.5s fuel=0 decisions=313 avg=292ms climb=4.0m rising=42.1s
+{"x":80,"vx":-3,"y":100} -> crash (vy -18.6 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=89.6s fuel=0 decisions=161 avg=549ms climb=17.4m rising=43.9s
+{"x":20,"y":140} -> crash (vy -22.2 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=91.5s fuel=0 decisions=157 avg=576ms climb=22.5m rising=44.9s
+{"x":20,"vx":1.7} -> crash (vy -18.9 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=92.7s fuel=0 decisions=259 avg=351ms climb=5.3m rising=40.9s
+{"x":43,"vx":-1.2} -> crash (vy -19.2 ≥ 4) score=0.0 t=92.1s fuel=0 decisions=244 avg=370ms climb=14.9m rising=42.5s
+SUMMARY [nvidia] tev1:4b physics/rival/reckless: TS=1 landed 0/6, avg latency 410 ms, n=1321, input_tokens 475, agree-with-rules 24%, avg climb 12.6m, avg rising 42.9s, avg score 0.00, avg fuel left 0%
+{"x":40} -> crash (vy -19.1 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=93.9s fuel=0 decisions=285 avg=321ms climb=3.8m rising=41.6s
+{"x":135,"vx":2} -> crash (vy -19.1 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=93.2s fuel=0 decisions=255 avg=358ms climb=4.6m rising=41.5s

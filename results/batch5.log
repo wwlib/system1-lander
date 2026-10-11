@@ -1,0 +1,34 @@
+{"x":40} -> crash ( vy=-2.2 vx=-0.9 ang=0.00) t=45.7s fuel=43 decisions=60 avg=763ms
+{"x":135,"vx":2} -> crash ( vy=-2.9 vx=-0.8 ang=0.00) t=54.5s fuel=32 decisions=83 avg=650ms
+{"x":80,"vx":-3,"y":100} -> LANDED t=57.9s fuel=27 decisions=89 avg=645ms
+{"x":20,"y":140} -> LANDED t=65.7s fuel=17 decisions=103 avg=630ms
+{"x":20,"vx":1.7} -> crash ( vy=-0.8 vx=-1.7 ang=0.00) t=59.8s fuel=24 decisions=94 avg=629ms
+{"x":43,"vx":-1.2} -> LANDED t=68.7s fuel=13 decisions=110 avg=618ms
+  bad {"t":9.9,"sent":{"alt_m":43,"vy_mps":-6.3,"vx_mps":3.9,"dx_to_pad_m":89.4,"angle_deg":20,"fuel_pct":92},"model":"burn_left","rule":"burn_center"}
+  bad {"t":19.6,"sent":{"alt_m":52.8,"vy_mps":-4.6,"vx_mps":-2,"dx_to_pad_m":-3.5,"angle_deg":-20,"fuel_pct":79},"model":"burn_left","rule":"coast_right"}
+  bad {"t":24,"sent":{"alt_m":39.5,"vy_mps":-3.8,"vx_mps":0.7,"dx_to_pad_m":7.1,"angle_deg":20,"fuel_pct":72},"model":"burn_right","rule":"coast_right"}
+  bad {"t":19.1,"sent":{"alt_m":83.1,"vy_mps":-2.7,"vx_mps":2.6,"dx_to_pad_m":60.9,"angle_deg":-20,"fuel_pct":78},"model":"burn_right","rule":"coast_right"}
+  bad {"t":11.1,"sent":{"alt_m":78.8,"vy_mps":-3.9,"vx_mps":3.9,"dx_to_pad_m":81.2,"angle_deg":20,"fuel_pct":89},"model":"burn_left","rule":"coast_center"}
+  bad {"t":9.3,"sent":{"alt_m":88.9,"vy_mps":-2.8,"vx_mps":1.6,"dx_to_pad_m":71,"angle_deg":-20,"fuel_pct":90},"model":"burn_right","rule":"coast_right"}
+SUMMARY [nvidia] tev1:4b physics/multi: TS=1 landed 3/6, avg latency 648 ms, n=539, input_tokens 580, agree-with-rules 59%
+{"x":40} -> crash (off pad vy=-15.0 vx=1.9 ang=0.35) t=11.6s fuel=97 decisions=4 avg=3018ms
+{"x":135,"vx":2} -> crash ( vy=-7.9 vx=-0.7 ang=0.35) t=82.3s fuel=0 decisions=106 avg=769ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-6.1 vx=1.2 ang=-0.08) t=81.3s fuel=0 decisions=104 avg=775ms
+{"x":20,"y":140} -> crash ( vy=-8.4 vx=-0.2 ang=0.35) t=82.9s fuel=0 decisions=103 avg=797ms
+{"x":20,"vx":1.7} -> crash ( vy=-8.8 vx=-2.1 ang=-0.15) t=83.1s fuel=0 decisions=102 avg=808ms
+{"x":43,"vx":-1.2} -> crash ( vy=-8.5 vx=0.8 ang=0.35) t=82.9s fuel=0 decisions=105 avg=784ms
+SUMMARY [nvidia] nimble:9b physics/multi: TS=1 landed 0/6, avg latency 804 ms, n=524, input_tokens 1103, agree-with-rules 56%
+{"x":40} -> crash (off pad vy=-0.3 vx=2.6 ang=-0.35) t=50.9s fuel=35 decisions=172 avg=289ms
+{"x":135,"vx":2} -> crash (off pad vy=-0.7 vx=0.0 ang=0.00) t=77.6s fuel=6 decisions=308 avg=243ms
+{"x":80,"vx":-3,"y":100} -> crash ( vy=-5.4 vx=0.4 ang=0.00) t=83.2s fuel=0 decisions=330 avg=244ms
+{"x":20,"y":140} -> crash (off pad vy=-6.6 vx=3.4 ang=-0.18) t=85.2s fuel=0 decisions=339 avg=244ms
+{"x":20,"vx":1.7} -> crash ( vy=-11.7 vx=2.6 ang=0.00) t=87.3s fuel=0 decisions=347 avg=245ms
+{"x":43,"vx":-1.2} -> crash ( vy=-10.3 vx=0.4 ang=0.00) t=85.6s fuel=0 decisions=337 avg=247ms
+SUMMARY [nvidia] tev1:4b physics/two: TS=1 landed 0/6, avg latency 249 ms, n=1833, input_tokens 758, agree-with-rules 22%
+{"x":40} -> LANDED t=59.1s fuel=26 decisions=257 avg=633ms
+{"x":135,"vx":2} -> LANDED t=56.8s fuel=28 decisions=267 avg=586ms
+{"x":80,"vx":-3,"y":100} -> LANDED t=50.1s fuel=37 decisions=225 avg=615ms
+{"x":20,"y":140} -> LANDED t=66.8s fuel=16 decisions=295 avg=624ms
+{"x":20,"vx":1.7} -> LANDED t=56.9s fuel=28 decisions=244 avg=645ms
+{"x":43,"vx":-1.2} -> LANDED t=61.6s fuel=22 decisions=272 avg=627ms
+SUMMARY [nvidia] tev1:4b physics/multi: TS=0.35 landed 6/6, avg latency 621 ms, n=1560, input_tokens 420, agree-with-rules 41%
