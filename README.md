@@ -259,6 +259,17 @@ Variants: `s5tjp` = bands + perception impressions + last command; `s5bjp` = ban
 
 (`results/steer-bench-s5.txt`, `results/batch15.log`.)
 
+**nimble:9b flown on the joystick/bands variants** (`results/batch16-nimble.log`, 1×, 6 starts each):
+
+| variant | landed | avg score | fuel left | ms/decision | failure mode |
+|---|---|---|---|---|---|
+| `s4tjn` | 0/6 | 0.00 | 45% | ~406 | drifts sideways out of bounds (5/6), 1 off-pad; little climbing |
+| `s4tjp` | 0/6 | 0.00 | 0% | ~406 | climbs (~950 m avg), runs out of fuel, falls (~60 m/s) |
+| `s5tjp` | 0/6 | 0.00 | 0% | 304 | climbs (~900 m avg), out of fuel, falls |
+| `s5bjp` | 0/6 | 0.00 | 0% | 302 | climbs (~1150 m avg), out of fuel, falls / timeout |
+
+nimble:9b does no better than tev1:4b (also 0/6 on all four). On s5, tev1:4b never fires the engine. nimble:9b does the opposite: it holds thrust and climbs away. `multi2` (tev1:4b, 6/6) is still the only setup that lands.
+
 **Takeaways:**
 - **Bands lose steering accuracy:** 10 points for tev1:4b, about 17 for nimble:9b. Most of the loss is on "no steering needed" states.
 - **Bands hurt vertical control in flight:** "very high" seems to read as "safe", so the engine stays off until it's too late.

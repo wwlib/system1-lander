@@ -1,0 +1,33 @@
+{"x":40} -> crash (out of bounds) score=0.0 t=45.9s fuel=42 decisions=112 avg=405ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (out of bounds) score=0.0 t=22.5s fuel=72 decisions=55 avg=403ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) score=0.0 t=29.2s fuel=52 decisions=70 avg=407ms climb=182.0m rising=27.5s
+{"x":20,"y":140} -> crash (out of bounds) score=0.0 t=51.6s fuel=35 decisions=125 avg=405ms climb=0.0m rising=0.0s
+SUMMARY [primary] nimble:9b physics/scene_s4tjn: TS=1 landed 0/4, avg latency 405 ms, n=362, input_tokens 1302, agree-with-rules 2%, avg climb 45.5m, avg rising 6.9s, avg score 0.00, avg fuel left 50%
+{"x":40} -> crash (vy -63.4 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=117.9s fuel=0 decisions=281 avg=407ms climb=1131.0m rising=76.9s
+{"x":135,"vx":2} -> crash (vy -37.2 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=101.8s fuel=0 decisions=244 avg=405ms climb=317.9m rising=47.0s
+{"x":80,"vx":-3,"y":100} -> crash (vy -58.6 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=114.9s fuel=0 decisions=275 avg=407ms climb=967.8m rising=77.0s
+{"x":20,"y":140} -> crash (vy -63.2 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=117.7s fuel=0 decisions=280 avg=408ms climb=1101.6m rising=76.9s
+SUMMARY [primary] nimble:9b physics/scene_s4tjp: TS=1 landed 0/4, avg latency 407 ms, n=1080, input_tokens 1324, agree-with-rules 14%, avg climb 879.6m, avg rising 69.5s, avg score 0.00, avg fuel left 0%
+# s4 extras (starts 5-6, EXTRA=2)
+{"x":20,"vx":1.7} -> crash (off pad, vx 5.0 ≥ 2) score=0.0 t=37.0s fuel=54 decisions=88 avg=412ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (out of bounds) score=0.0 t=51.6s fuel=15 decisions=124 avg=407ms climb=601.1m rising=49.9s
+SUMMARY [primary] nimble:9b physics/scene_s4tjn: TS=1 landed 0/2, avg latency 409 ms, n=212, input_tokens 1316, agree-with-rules 8%, avg climb 300.5m, avg rising 24.9s, avg score 0.00, avg fuel left 35%
+{"x":20,"vx":1.7} -> crash (vy -63.5 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=118.0s fuel=0 decisions=283 avg=405ms climb=1133.9m rising=76.9s
+{"x":43,"vx":-1.2} -> crash (vy -61.6 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=116.8s fuel=0 decisions=281 avg=405ms climb=1060.4m rising=77.0s
+SUMMARY [primary] nimble:9b physics/scene_s4tjp: TS=1 landed 0/2, avg latency 405 ms, n=564, input_tokens 1328, agree-with-rules 13%, avg climb 1097.2m, avg rising 77.0s, avg score 0.00, avg fuel left 0%
+# s5 (EXTRA=2, 6 starts)
+{"x":40} -> crash (vy -61.4 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=117.2s fuel=0 decisions=386 avg=297ms climb=1055.2m rising=75.3s
+{"x":135,"vx":2} -> crash (off pad, vy -61.8 ≥ 4) score=0.0 t=117.5s fuel=0 decisions=386 avg=296ms climb=1078.9m rising=76.0s
+{"x":80,"vx":-3,"y":100} -> crash (vy -28.8 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=97.5s fuel=0 decisions=282 avg=338ms climb=166.6m rising=46.1s
+{"x":20,"y":140} -> crash (vy -63.5 ≥ 4, tilt 0.32 ≥ 0.3) score=0.0 t=118.5s fuel=0 decisions=391 avg=296ms climb=1115.4m rising=77.4s
+{"x":20,"vx":1.7} -> crash (vy -61.9 ≥ 4) score=0.0 t=117.5s fuel=0 decisions=382 avg=301ms climb=1074.8m rising=77.5s
+{"x":43,"vx":-1.2} -> crash (vy -58.1 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=115.2s fuel=0 decisions=366 avg=306ms climb=932.7m rising=73.0s
+SUMMARY [primary] nimble:9b physics/scene_s5tjp: TS=1 landed 0/6, avg latency 304 ms, n=2193, input_tokens 1270, agree-with-rules 14%, avg climb 903.9m, avg rising 70.9s, avg score 0.00, avg fuel left 0%
+{"x":40} -> crash (vy -63.1 ≥ 4) score=0.0 t=118.3s fuel=0 decisions=374 avg=310ms climb=1119.2m rising=76.7s
+{"x":135,"vx":2} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.3s fuel=0 decisions=391 avg=301ms climb=1211.0m rising=78.4s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -62.7 ≥ 4) score=0.0 t=118.0s fuel=0 decisions=384 avg=302ms climb=1134.1m rising=77.0s
+{"x":20,"y":140} -> crash (off pad, vy -63.8 ≥ 4) score=0.0 t=118.6s fuel=0 decisions=399 avg=291ms climb=1138.5m rising=77.4s
+{"x":20,"vx":1.7} -> crash (off pad, vy -63.6 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=118.6s fuel=0 decisions=377 avg=308ms climb=1149.7m rising=77.7s
+{"x":43,"vx":-1.2} -> crash (off pad, vy -63.5 ≥ 4) score=0.0 t=118.4s fuel=0 decisions=386 avg=300ms climb=1139.3m rising=77.4s
+SUMMARY [primary] nimble:9b physics/scene_s5bjp: TS=1 landed 0/6, avg latency 302 ms, n=2311, input_tokens 1204, agree-with-rules 12%, avg climb 1148.6m, avg rising 77.5s, avg score 0.00, avg fuel left 0%
+BATCH16 DONE
