@@ -1,0 +1,30 @@
+# steer-bench  2026-10-12T02:52:12.327Z  states=40 reference dist {"left":16,"right":14,"none":10}  (majority-class baseline 40%)
+# acc = mean over option orders; bias = share of states whose answer changes with option order; conf = ref→answers left/right/none
+| rank | wording | model | accuracy | bias | confusion (ref L/R/N → answered L/R/N) | ms/decision | tok/decision |
+|---|---|---|---|---|---|---|---|
+| 1 | joy pad:ahead | tev1:4b | 91% | 13% | L→32/0/0 R→2/26/0 N→2/3/15 | 100 | 275 |
+| 2 | pad pad:ahead | tev1:4b | 90% | 5% | L→32/0/0 R→0/26/2 N→2/4/14 | 96 | 272 |
+| 3 | joy | tev1:4b | 84% | 8% | L→30/2/0 R→0/26/2 N→6/3/11 | 98 | 279 |
+| 4 | pad +last | tev1:4b | 84% | 3% | L→31/1/0 R→0/26/2 N→6/4/10 | 94 | 283 |
+| 5 | joy (6 orders) | tev1:4b | 83% | 20% | L→90/6/0 R→1/77/6 N→20/8/32 | 89 | 279 |
+| 6 | pad | tev1:4b | 83% | 5% | L→31/1/0 R→1/25/2 N→6/4/10 | 97 | 276 |
+| 7 | pad (6 orders) | tev1:4b | 81% | 10% | L→87/9/0 R→1/77/6 N→18/12/30 | 86 | 276 |
+| 8 | tilt | tev1:4b | 79% | 8% | L→25/7/0 R→0/26/2 N→3/5/12 | 110 | 277 |
+| 9 | joy pad:xpos | tev1:4b | 79% | 10% | L→27/5/0 R→0/26/2 N→2/8/10 | 110 | 296 |
+| 10 | pad pad:xpos | tev1:4b | 79% | 8% | L→26/6/0 R→1/25/2 N→2/6/12 | 99 | 293 |
+| 11 | move | tev1:4b | 78% | 0% | L→26/6/0 R→0/26/2 N→6/4/10 | 99 | 276 |
+| 12 | fly | tev1:4b | 76% | 8% | L→25/7/0 R→0/26/2 N→5/5/10 | 103 | 276 |
+| 13 | fly | nimble:9b | 76% | 8% | L→32/0/0 R→2/24/2 N→9/6/5 | 326 | 314 |
+| 14 | joy +last | tev1:4b | 76% | 18% | L→27/5/0 R→0/26/2 N→8/4/8 | 104 | 286 |
+| 15 | move | nimble:9b | 75% | 5% | L→32/0/0 R→2/24/2 N→10/6/4 | 138 | 314 |
+| 16 | pad | nimble:9b | 75% | 10% | L→28/2/2 R→0/26/2 N→9/5/6 | 138 | 314 |
+| 17 | tilt | nimble:9b | 74% | 8% | L→31/0/1 R→4/22/2 N→10/4/6 | 138 | 315 |
+| 18 | joy | nimble:9b | 74% | 8% | L→31/0/1 R→2/24/2 N→10/6/4 | 139 | 317 |
+| 19 | pad | tev1:0.8b | 43% | 78% | L→19/11/2 R→12/15/1 N→9/11/0 | 49 | 276 |
+| 20 | joy | tev1:0.8b | 41% | 85% | L→19/13/0 R→15/12/1 N→9/9/2 | 48 | 279 |
+| 21 | pad yes/no | tev1:4b | 40% | 0% | L→16/4/12 R→4/4/20 N→6/2/12 | 157 | 507 |
+| 22 | fly | tev1:0.8b | 35% | 53% | L→12/20/0 R→12/15/1 N→6/13/1 | 79 | 276 |
+| 23 | tilt | tev1:0.8b | 33% | 73% | L→11/17/4 R→11/15/2 N→7/13/0 | 47 | 277 |
+| 24 | joy yes/no | tev1:4b | 28% | 0% | L→8/0/24 R→0/2/26 N→6/2/12 | 225 | 509 |
+| 25 | move | tev1:0.8b | 26% | 45% | L→6/24/2 R→12/15/1 N→4/16/0 | 49 | 276 |
+# full 7-wording × ±explanation run (accuracy/bias/latency only): see results/steer-bench-full-run.log

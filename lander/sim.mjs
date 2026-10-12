@@ -272,7 +272,7 @@ export function rivalMap(a) { if (a.near_ground) return 'center'; const toward =
 // s3 = s1 + the last 2 decisions as short "frames" (state + what you chose).   Output forms: a = one 6-way choice, b = engine noul + tilt choice, c = three nouls.
 const side = v => v > 0 ? 'right' : 'left';
 const padDx = s => { const c = (PAD.x0 + PAD.x1) / 2; return c - s.x; };
-function proseS1(s, engineOn) { const alt = Math.max(0, s.y - PAD.y), vy = s.vy, vx = s.vx, dx = padDx(s), deg = Math.round(s.angle * 180 / Math.PI), half = (PAD.x1 - PAD.x0) / 2;
+export function proseS1(s, engineOn) { const alt = Math.max(0, s.y - PAD.y), vy = s.vy, vx = s.vx, dx = padDx(s), deg = Math.round(s.angle * 180 / Math.PI), half = (PAD.x1 - PAD.x0) / 2;
   return [`You are ${alt.toFixed(0)} meters above the ground, ${Math.abs(vy) < 0.05 ? 'not moving vertically' : `${vy < 0 ? 'falling' : 'rising'} at ${Math.abs(vy).toFixed(1)} meters per second`}.`,
     Math.abs(dx) <= half ? `The landing pad is directly below you (its center is ${Math.abs(dx).toFixed(0)} meters to your ${side(dx)}).` : `The landing pad's center is ${Math.abs(dx).toFixed(0)} meters to your ${side(dx)}.`,
     Math.abs(vx) < 0.05 ? 'You are not drifting sideways.' : `You are drifting ${side(vx)} at ${Math.abs(vx).toFixed(1)} meters per second.`,
@@ -312,19 +312,40 @@ export const SCENE_MISSION = 'You are piloting a lunar lander. Goal: touch down 
   'Gravity pulls you down at 1.6 m/s². The main engine pushes along the ship\'s axis at 4 m/s²: upright it pushes straight up; tilted left it also pushes you left; tilted right it also pushes you right. Tilting without the engine does nothing to your motion.';
 // Graded throttle (scene t-variants). Hover needs 1.62/4 = 0.41, so low (0.3) still sinks slowly, medium (0.55) brakes gently, high brakes hard.
 export const THROTTLE = { off: 0, low: 0.3, medium: 0.55, high: 1 };
-export const SCENE_T = ['scene_s1tn', 'scene_s1tp', 'scene_s4tn', 'scene_s4tp', 'scene_s4tpr'];
+export const SCENE_T = ['scene_s1tn', 'scene_s1tp', 'scene_s4tn', 'scene_s4tp', 'scene_s4tpr', 'scene_s4tjn', 'scene_s4tjp', 'scene_s5tjn', 'scene_s5tjp', 'scene_s5bjp'];
+// s5 QUALITATIVE BANDS (no numbers at all). Fixed thresholds, descriptive only:
+//   vertical  vy: >2 rising fast · 0.3..2 rising slowly · |vy|≤0.3 hovering · fall 0.3..1.5 falling very slowly · 1.5..3.5 falling slowly · 3.5..6 falling fast · >6 falling very fast
+//   altitude  m:  >80 very high · 40..80 medium high · 15..40 low · 5..15 very low · <5 nearly on the ground
+//   pad |dx| m:   ≤15 directly below · 15..40 a little to the L/R · 40..80 a lot to the L/R · >80 very far L/R
+//   sideways vx:  <0.3 not drifting · 0.3..1.5 slowly · 1.5..3.5 fast · >3.5 very fast (left/right)
+//   tilt deg:     <5 upright · 5..12 tilted slightly L/R · >12 tilted strongly L/R
+//   fuel %:       >60 plenty · 30..60 about half · 10..30 low · <10 almost empty
+// s5tj* = bands + perception impressions (same perceive()) + joystick steering + graded throttle; s5bjp = bands only (no impressions) + last command.
+export function proseS5(s) { const alt = Math.max(0, s.y - PAD.y), dx = (PAD.x0 + PAD.x1) / 2 - s.x, ad = Math.abs(dx), deg = s.angle * 180 / Math.PI, f = -s.vy, avx = Math.abs(s.vx);
+  const v = s.vy > 2 ? 'rising fast' : s.vy > 0.3 ? 'rising slowly' : Math.abs(s.vy) <= 0.3 ? 'hovering' : f < 1.5 ? 'falling very slowly' : f < 3.5 ? 'falling slowly' : f < 6 ? 'falling fast' : 'falling very fast';
+  const a = alt > 80 ? 'very high' : alt > 40 ? 'medium high' : alt > 15 ? 'low' : alt > 5 ? 'very low' : 'nearly on the ground';
+  const L = dx > 0 ? 'right' : 'left', pad = ad <= 15 ? 'directly below you' : `${ad < 40 ? 'a little' : ad < 80 ? 'a lot' : 'very far'} to the ${L}`;
+  const sw = avx < 0.3 ? 'not drifting sideways' : `drifting ${avx < 1.5 ? 'slowly' : avx < 3.5 ? 'fast' : 'very fast'} ${s.vx > 0 ? 'right' : 'left'}`;
+  const t = Math.abs(deg) < 5 ? 'upright' : `tilted ${Math.abs(deg) < 12 ? 'slightly' : 'strongly'} ${deg > 0 ? 'right' : 'left'}`;
+  const fu = s.fuel > 60 ? 'plenty' : s.fuel > 30 ? 'about half' : s.fuel > 10 ? 'low' : 'almost empty';
+  return `You are ${a}, ${v}. The landing pad is ${pad}. You are ${sw}. The ship is ${t}. Fuel: ${fu}.`; }
+// s4tj*: steering worded as a joystick (best in tools/steerbench.mjs) + pad position as 'ahead-right/left, N meters away'.
 export const SCENE_VARIANTS = ['scene_s1a', 'scene_s1b', 'scene_s1c', 'scene_s2a', 'scene_s2b', 'scene_s2c', 'scene_s3a', 'scene_s3b', 'scene_s3c', 'scene_s4a', 'scene_s4b', 'scene_s4c'];
 const TILTW = { center: 'none', left: 'left', right: 'right' };
-function scenePayloadT(s, variant, last) { const [, kind, prev, rev] = variant.match(/^scene_s(\d)t([pn])(r?)$/);
+function scenePayloadT(s, variant, last) { const joy = /^scene_s[45][tb]j/.test(variant), s5 = variant.startsWith('scene_s5'), [, kind, prev, rev] = joy ? [, variant.includes('bj') ? '5b' : '4', variant.slice(-1), ''] : variant.match(/^scene_s(\d)t([pn])(r?)$/);
   let state = proseS1(s, false).replace(/ The main engine is (on|off)\.$/, '');
-  if (prev === 'p') state += ` Last command: ${last ? `${last.throttle === 'off' ? 'engine off' : last.throttle + ' thrust'}, tilt ${TILTW[last.tilt] || 'none'}` : 'engine off, tilt none'}.`;
+  if (s5) state = proseS5(s);
+  else if (joy) { const dx = (PAD.x0 + PAD.x1) / 2 - s.x; state = state.replace(/The landing pad[^.]*\.( \(its center[^)]*\)\.)?/, Math.abs(dx) <= 15 ? 'The landing pad is directly below you.' : `The landing pad is ahead-${dx > 0 ? 'right' : 'left'} of you, ${Math.abs(dx).toFixed(0)} meters away.`); }
+  if (prev === 'p') state += joy ? ` Last command: ${last ? `${last.throttle === 'off' ? 'engine off' : last.throttle + ' thrust'}, joystick ${last.tilt === 'left' ? 'left' : last.tilt === 'right' ? 'right' : 'center'}` : 'engine off, joystick center'}.`
+    : ` Last command: ${last ? `${last.throttle === 'off' ? 'engine off' : last.throttle + ' thrust'}, tilt ${TILTW[last.tilt] || 'none'}` : 'engine off, tilt none'}.`;
   if (kind === '4') state += ' Impressions: ' + perceive(s);
   const thr = { off: 'main engine off', low: 'low thrust (not quite enough to hover)', medium: 'medium thrust (a bit more than hovering)', high: 'high thrust (full power)' };
   const order = rev ? ['high', 'medium', 'low', 'off'] : ['off', 'low', 'medium', 'high'];
   const M = SCENE_MISSION.replace('The main engine pushes along the ship\'s axis at 4 m/s²', 'The main engine has throttle levels and pushes along the ship\'s axis (full power 4 m/s²)');
   return { state, questions: {
     a: { type: 'choice', instructions: `${M} What throttle do you set right now?`, criteria: Object.fromEntries(order.map(k => [k, thr[k]])) },
-    b: { type: 'choice', instructions: `${M} How do you tilt the ship right now?`, criteria: { upright: 'keep the ship upright', left: 'tilt left', right: 'tilt right' } } } }; }
+    b: joy ? { type: 'choice', instructions: `${M} Where do you put the steering joystick right now?`, criteria: { a: 'joystick center', b: 'joystick left', c: 'joystick right' } }
+      : { type: 'choice', instructions: `${M} How do you tilt the ship right now?`, criteria: { upright: 'keep the ship upright', left: 'tilt left', right: 'tilt right' } } } }; }
 export function scenePayload(s, variant, hist = [], engineOn = false, last = null) {
   if (SCENE_T.includes(variant)) return scenePayloadT(s, variant, last);
   const [, kind, form] = variant.match(/^scene_s(\d)([abc])$/) || [, '1', 'a'];
@@ -342,7 +363,7 @@ export function scenePayload(s, variant, hist = [], engineOn = false, last = nul
 }
 // Code maps control NAMES to inputs only. Form c: exactly one of left/right = yes → that tilt, otherwise upright (documented tie rule).
 export function sceneRead(variant, a) {
-  if (SCENE_T.includes(variant)) { const th = a.a?.choice in THROTTLE ? a.a.choice : 'off', c = a.b?.choice, tilt = c === 'left' || c === 'right' ? c : 'center', p = a.b?.probabilities || {}, pa = a.a?.probabilities || {};
+  if (SCENE_T.includes(variant)) { const th = a.a?.choice in THROTTLE ? a.a.choice : 'off', c = ({ a: 'upright', b: 'left', c: 'right' })[a.b?.choice] ?? a.b?.choice, tilt = c === 'left' || c === 'right' ? c : 'center', p0 = a.b?.probabilities || {}, p = 'a' in p0 ? { upright: p0.a, left: p0.b, right: p0.c } : p0, pa = a.a?.probabilities || {};
     return { ctrl: th + '_' + (tilt === 'center' ? 'upright' : tilt), throttle: th, thrust: THROTTLE[th] || false, tilt, pThrust: 1 - (pa.off ?? 0), throttleP: pa, tiltP: { center: p.upright ?? 0, left: p.left ?? 0, right: p.right ?? 0 } }; }
   const form = variant.slice(-1);
   if (form === 'a') { const k = a.q?.choice in CTRL ? a.q.choice : 'off_upright', [e, t] = k.split('_'); const pr = a.q?.probabilities || {};

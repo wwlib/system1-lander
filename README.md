@@ -207,6 +207,64 @@ The mission (land gently and upright on the pad, save fuel, survivable limits) a
 
 So the perception layer carries real weight, and the remaining gap is in turning a description into a sideways manoeuvre. Possible next steps: impressions that state the geometry more directly (still without actions), few-shot examples in the instructions, or splitting throttle and tilt into separate calls with only the relevant impressions.
 
+### Steering-wording bench
+
+Scene mode failed mostly on steering, so `lander/tools/steerbench.mjs` isolates that question with no game: direct `/v1/systemone` calls, perception prose fixed, only the steering wording varied. The test set has 40 balanced states (pad left / right / below × drifting toward / away / still × slow / fast). The reference answer comes from a simple documented rule: over the pad, steer against drift above 1 m/s; moving away or still → toward the pad; approaching too fast (> 1.3 × distance/8 + 0.3) → away; too slow → toward; else none. Reference mix: left 16, right 14, none 10, so always answering "left" scores 40%. Results are in `results/steer-bench.txt` (plus `steer-bench-full-run.log`).
+
+| wording (choice, neutral option first) | tev1:4b | nimble:9b | tev1:0.8b |
+|---|---|---|---|
+| **joystick left / center / right + "pad is ahead-right of you, N m away"** | **91%** (order bias 13%) | — | — |
+| press LEFT / RIGHT / no input + "ahead-right" | 90% (bias 5%) | — | — |
+| joystick left / center / right | 84% | 74% | 41% |
+| press LEFT / press RIGHT / no input | 83% | 75% | 43% |
+| tilt left / tilt right / stay level | 79% | 74% | 33% |
+| move left / right / stay | 78% | 75% | 26% |
+| fly left / right / hold | 76% | 76% | 35% |
+| push left / right / none, thrust sideways left / right | 69% | 73% | 38–41% |
+| pad as x positions instead of "to your right" | 79% | | |
+| per-direction yes/no ("Joystick left?" + "Joystick right?") | 28–40% | | |
+
+- **Framing:** game/joystick framing beats physical framing ("push", "thrust sideways").
+- **Pad wording:** "ahead-right of you, 75 m away" beats "the pad's centre is 75 m to your right" and x positions.
+- **Control explanations hurt:** adding a sentence like "tilting left pushes the ship left" lowered tev1:4b by 3–12 points.
+- **Last steering command:** adding it didn't help.
+- **Yes/no form is bad:** per-direction yes/no answers "no" to both most of the time.
+- **Model size:** nimble:9b is flat at about 75% whatever the wording. tev1:0.8b is near chance, and its answers change with option order 45–85% of the time.
+- **Option order:** with 6 orders, tev1:4b's answer still changes for 10–20% of states.
+- **Remaining errors:** mostly "none" states answered with a direction.
+
+The best wording is in the UI as `scene_s4tjn` / `scene_s4tjp` (perception + throttle + joystick + "ahead" pad wording, without / with the last command).
+
+**Flown** (6 starts, 1×, tev1:4b, `results/batch14.log`): `scene_s4tjn` 0/6, 64% fuel left, 308 ms; `scene_s4tjp` 0/6, 47% fuel left, 308 ms. Most crashes are now gentle touchdowns **off the pad** (vertical speed fine). 91% per-decision steering accuracy is not enough when ~100 decisions are chained; the joystick also flips between left and right.
+
+### Qualitative bands only (s5)
+
+`scene_s5*` describes the scene **with no numbers at all**, using fixed bands (thresholds in `proseS5()`, `sim.mjs`):
+
+| quantity | bands |
+|---|---|
+| vertical | rising fast (> 2 m/s) · rising slowly · hovering (\|vy\| ≤ 0.3) · falling very slowly (< 1.5) · falling slowly (< 3.5) · falling fast (< 6) · falling very fast |
+| altitude | very high (> 80 m) · medium high (> 40) · low (> 15) · very low (> 5) · nearly on the ground |
+| pad | directly below (≤ 15 m) · a little (< 40) · a lot (< 80) · very far to the left/right |
+| sideways | not drifting (< 0.3 m/s) · slowly (< 1.5) · fast (< 3.5) · very fast, left/right |
+| tilt / fuel | upright (< 5°) · slightly (< 12°) · strongly left/right · fuel plenty (> 60%) · about half · low · almost empty |
+
+Variants: `s5tjp` = bands + perception impressions + last command; `s5bjp` = bands + last command, no impressions. Both use joystick steering and graded throttle.
+
+| | steering bench, tev1:4b (joystick) | nimble:9b | throttle vs last command | flown 6 starts, 1× | latency |
+|---|---|---|---|---|---|
+| numeric + "ahead" (`s4tjp`) | 91% | 83% | adjusts (too fast → up 9/9) | 0/6 (off-pad touchdowns) | 308 ms |
+| bands + impressions (`s5tjp`) | 81% | 66% | adjusts in the probe (at 50 m) | **0/6, 100% fuel left**: never fires the engine while "very high", even "falling very fast" | 224 ms |
+| bands only (`s5bjp`) | 80% | 68% | **copies the last command** in every case | 0/6, 100% fuel left | 201 ms |
+
+(`results/steer-bench-s5.txt`, `results/batch15.log`.)
+
+**Takeaways:**
+- **Bands lose steering accuracy:** 10 points for tev1:4b, about 17 for nimble:9b. Most of the loss is on "no steering needed" states.
+- **Bands hurt vertical control in flight:** "very high" seems to read as "safe", so the engine stays off until it's too late.
+- **Latency:** about 25–35% lower (201–224 vs 308 ms). Part of that is fewer input tokens; repeated band phrases probably also help Ollama's prompt cache, but we didn't measure cache hits directly.
+- **For tev1:4b, numbers plus impressions beat bands.**
+
 **Model vs code, restated:** in `multi2` the model answers facts and the code decides. In scene mode the code describes (the perception layer: facts + impressions) and the model decides. Today the first flies and the second doesn't.
 
 ## Limitations
@@ -309,7 +367,7 @@ lander/
   env.mjs                 .env loader
   providers/index.mjs     Ollama / Jev / Foundry / OpenRouter adapters
   mock-systemone.mjs      fake decision API for UI work
-  tools/                  headless, race, evalq, multieval, sceneeval, steerq, tune, steervars
+  tools/                  headless, race, evalq, multieval, sceneeval, steerbench, steerq, tune, steervars
   tools/probes/           small accuracy probes (arithmetic, number format, personas, word facts, throttle-adjust)
 results/                  raw logs behind the tables above (hosts redacted)
 docs/screenshot.png

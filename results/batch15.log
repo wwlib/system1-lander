@@ -1,0 +1,42 @@
+tev1:4b joy pad:s5: 81% bias 13% 101ms
+tev1:4b joy pad:s5only: 80% bias 10% 90ms
+tev1:4b joy pad:ahead: 91% bias 13% 95ms
+tev1:4b pad pad:s5: 78% bias 13% 97ms
+tev1:4b pad pad:s5only: 74% bias 8% 89ms
+tev1:4b pad pad:ahead: 90% bias 5% 98ms
+nimble:9b joy pad:s5: 66% bias 3% 262ms
+nimble:9b joy pad:s5only: 68% bias 3% 127ms
+nimble:9b joy pad:ahead: 83% bias 5% 140ms
+nimble:9b pad pad:s5: 66% bias 13% 133ms
+nimble:9b pad pad:s5only: 66% bias 5% 122ms
+nimble:9b pad pad:ahead: 78% bias 0% 138ms
+# steer-bench  2026-10-12T03:28:25.002Z  states=40 reference dist {"left":16,"right":14,"none":10}  (majority-class baseline 40%)
+# acc = mean over option orders; bias = share of states whose answer changes with option order; conf = ref→answers left/right/none
+== tev1:4b scene_s5tjp
+  too_fast     last off: low/high/low (↑3 =0 ↓0) | last low: medium/medium/medium (↑3 =0 ↓0) | last medium: high/high/high (↑3 =0 ↓0) | last high: medium/medium/medium (↑0 =0 ↓3)
+  about_right  last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: medium/off/off (↑0 =1 ↓2) | last high: off/off/off (↑0 =0 ↓3)
+  slow         last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: low/off/low (↑0 =0 ↓3) | last high: low/off/low (↑0 =0 ↓3)
+== tev1:4b scene_s5bjp
+  too_fast     last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: medium/medium/medium (↑0 =3 ↓0) | last high: high/high/high (↑0 =3 ↓0)
+  about_right  last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: medium/medium/medium (↑0 =3 ↓0) | last high: high/medium/high (↑0 =2 ↓1)
+  slow         last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: medium/medium/medium (↑0 =3 ↓0) | last high: medium/low/medium (↑0 =0 ↓3)
+== tev1:4b scene_s4tjp
+  too_fast     last off: high/high/high (↑3 =0 ↓0) | last low: medium/high/medium (↑3 =0 ↓0) | last medium: high/high/high (↑3 =0 ↓0) | last high: high/high/high (↑0 =3 ↓0)
+  about_right  last off: off/off/off (↑0 =3 ↓0) | last low: low/low/off (↑0 =2 ↓1) | last medium: medium/off/off (↑0 =1 ↓2) | last high: medium/off/off (↑0 =0 ↓3)
+  slow         last off: off/off/off (↑0 =3 ↓0) | last low: low/low/low (↑0 =3 ↓0) | last medium: medium/medium/low (↑0 =2 ↓1) | last high: medium/medium/low (↑0 =0 ↓3)
+impression for too_fast: You are falling too fast for this height
+{"x":40} -> crash (off pad, vy -17.9 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=11.1s fuel=100 decisions=48 avg=224ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (off pad, vy -18.1 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=11.2s fuel=100 decisions=49 avg=222ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -16.5 ≥ 4, vx 6.8 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=10.2s fuel=100 decisions=45 avg=223ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad, vy -19.7 ≥ 4, vx 4.1 ≥ 2, tilt -0.35 ≥ 0.3) score=0.0 t=12.2s fuel=100 decisions=54 avg=218ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad, vy -18.5 ≥ 4, vx 9.4 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=11.4s fuel=100 decisions=49 avg=225ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad, vy -18.0 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=11.1s fuel=100 decisions=47 avg=233ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s5tjp: TS=1 landed 0/6, avg latency 224 ms, n=292, input_tokens 1214, agree-with-rules 20%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 100%
+{"x":40} -> crash (off pad, vy -18.7 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=11.5s fuel=100 decisions=57 avg=197ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (off pad, vy -18.1 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=11.2s fuel=100 decisions=52 avg=207ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -16.5 ≥ 4, vx 6.8 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=10.2s fuel=100 decisions=46 avg=216ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad, vy -19.5 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=12.1s fuel=100 decisions=62 avg=193ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad, vy -18.5 ≥ 4, vx 12.4 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=11.4s fuel=100 decisions=54 avg=202ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad, vy -18.4 ≥ 4, vx 9.5 ≥ 2, tilt 0.35 ≥ 0.3) score=0.0 t=11.4s fuel=100 decisions=58 avg=193ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s5bjp: TS=1 landed 0/6, avg latency 201 ms, n=329, input_tokens 1130, agree-with-rules 11%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 100%
+BATCH15 DONE

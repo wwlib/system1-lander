@@ -1,0 +1,46 @@
+tev1:4b fly: 76% bias 8% 102ms
+tev1:4b fly+ex: 73% bias 0% 99ms
+tev1:4b move: 78% bias 0% 97ms
+tev1:4b move+ex: 68% bias 10% 101ms
+tev1:4b push: 69% bias 3% 97ms
+tev1:4b push+ex: 64% bias 3% 102ms
+tev1:4b thrust: 69% bias 3% 99ms
+tev1:4b thrust+ex: 61% bias 3% 103ms
+tev1:4b tilt: 79% bias 8% 98ms
+tev1:4b tilt+ex: 71% bias 3% 101ms
+tev1:4b joy: 84% bias 8% 97ms
+tev1:4b joy+ex: 76% bias 3% 102ms
+tev1:4b pad: 83% bias 5% 99ms
+tev1:4b pad+ex: 71% bias 8% 102ms
+nimble:9b fly: 76% bias 8% 262ms
+nimble:9b fly+ex: 74% bias 8% 141ms
+nimble:9b move: 75% bias 5% 138ms
+nimble:9b move+ex: 75% bias 5% 144ms
+nimble:9b push: 73% bias 5% 139ms
+nimble:9b push+ex: 78% bias 0% 141ms
+nimble:9b thrust: 73% bias 0% 141ms
+nimble:9b thrust+ex: 78% bias 5% 144ms
+nimble:9b tilt: 74% bias 8% 139ms
+nimble:9b tilt+ex: 71% bias 3% 142ms
+nimble:9b joy: 74% bias 8% 139ms
+nimble:9b joy+ex: 71% bias 3% 141ms
+nimble:9b pad: 75% bias 10% 140ms
+nimble:9b pad+ex: 76% bias 5% 144ms
+tev1:0.8b fly: 35% bias 53% 78ms
+tev1:0.8b move: 26% bias 45% 49ms
+tev1:0.8b push: 41% bias 80% 47ms
+tev1:0.8b thrust: 38% bias 85% 49ms
+tev1:0.8b tilt: 33% bias 73% 47ms
+tev1:0.8b joy: 41% bias 85% 47ms
+tev1:0.8b pad: 43% bias 78% 49ms
+tev1:4b joy yes/no: 28%
+tev1:4b joy pad:ahead: 91%
+tev1:4b joy pad:xpos: 79%
+tev1:4b joy +last: 76%
+tev1:4b joy (6 orders): 83% bias 20%
+tev1:4b pad yes/no: 40%
+tev1:4b pad pad:ahead: 90%
+tev1:4b pad pad:xpos: 79%
+tev1:4b pad +last: 84%
+tev1:4b pad (6 orders): 81% bias 10%
+# (run ended with a file-write bug, since fixed; the table was regenerated in steer-bench.txt)
