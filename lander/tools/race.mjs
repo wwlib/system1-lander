@@ -6,7 +6,7 @@ const host = process.env.OLLAMA_HOST_KEY || 'primary', persona = process.env.PER
 const pairs = [[{ x: 40 }, { x: 230 - 40 }], [{ x: 75 }, { x: 195 }], [{ x: 40, y: 150 }, { x: 20, y: 150 }], [{ x: 60, vx: 1 }, { x: 180, vx: -1 }]];
 async function fly(st, opt) { const s = newState(st); let d = { thrust: false, tilt: 'center' }, lat = [], appliedT = 0;
   while (!s.outcome) { const r = await decide({ ...s }, opt); lat.push(r.ms);
-    for (let t = 0; t < r.ms / 1000 && !s.outcome; t += 1 / 60) step(s, 1 / 60, d.thrust && (d.pulse == null || s.t - appliedT < d.pulse), d.tilt); d = r; appliedT = s.t; }
+    for (let t = 0; t < r.ms / 1000 && !s.outcome; t += 1 / 60) step(s, 1 / 60, (d.pulse == null || s.t - appliedT < d.pulse) ? d.thrust : false, d.tilt); d = r; appliedT = s.t; }
   return { s, avg: lat.reduce((a, b) => a + b) / lat.length, n: lat.length }; }
 const tot = { p: [], r: [] };
 for (const [a, b] of pairs) { const [P, Rv] = await Promise.all([fly(a, { variant: 'multi2', host }), fly(b, { variant: 'rival', persona, host })]);

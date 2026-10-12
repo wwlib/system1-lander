@@ -1,7 +1,7 @@
 import './env.mjs';
 import { hostTable, send } from './providers/index.mjs';
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS } from './sim.mjs';
+import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS, SCENE_VARIANTS, SCENE_T, scenePayload, sceneRead, SCENE_MISSION } from './sim.mjs';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
 // Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
@@ -44,7 +44,22 @@ async function decideMulti(s, model, t0, hostKey, v2 = false, persona = null) {
   return { thrustBy: 'model', mode: 'physics', variant: persona ? 'rival' : v2 ? (v2 === 'p' ? 'multi2p' : 'multi2') : 'multi', persona, pulse: v2 === 'p' ? PULSE_S : null, model, thrust, pThrust, tilt, action: c, probs: pr, usage, ms: Math.round(performance.now() - t0), answers: ans, table: persona ? RIVAL_TABLE : v2 ? (v2 === 'p' ? [...MULTI2_TABLE, `burn pulse (game mechanic): engine fires at most ${PULSE_S} s sim time per decision, then coasts`] : MULTI2_TABLE) : MULTI_TABLE,
     fellBack, upstream: { url, multi: true, calls, body: first.body, request: { model, state: Object.assign({}, ...done.map(x => x.request.state)), questions: Object.fromEntries(done.map(x => [x.name, x.request.questions.q])), keep_alive: '30m' }, rawResponse: done.map(x => x.rawResponse).join('\n'), response: done.map(x => x.response) }, simState: s, explain: null };
 }
+// Scene mode: one call per decision; prose state; the model picks controls; code maps names → inputs.
+// History (for s3) is kept per track ('player' / 'rival'); it resets when sim time goes backwards (new flight).
+const HIST = {};
+async function decideScene(s, model, t0, opt) {
+  const tr = opt.track || 'player', H = HIST[tr] && HIST[tr].t <= s.t ? HIST[tr] : (HIST[tr] = { t: s.t, list: [] });
+  const hist = H.list.map(h => ({ ...h, ago: s.t - h.t })), last = H.list[H.list.length - 1];
+  const request = { model, ...scenePayload(s, opt.variant, hist, !!last && last.ctrl.startsWith('on'), last && last.throttle ? { throttle: last.throttle, tilt: last.tilt } : null), keep_alive: '30m' }, body = JSON.stringify(request);
+  const P = await post(opt.host, body), r = P.r; if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`);
+  const raw = await r.text(), j = JSON.parse(raw), R = sceneRead(opt.variant, j.answers || {});
+  H.t = s.t; H.list.push({ t: s.t, s: { ...s }, ctrl: R.ctrl, throttle: R.throttle, tilt: R.tilt }); if (H.list.length > 3) H.list.shift();
+  const c = (R.thrust ? 'burn_' : 'coast_') + R.tilt, tp = R.tiltP; // 6-way view for the panel; throttle level is in R.throttle
+  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? R.pThrust : 1 - R.pThrust) * (tp[t] ?? (t === R.tilt ? 1 : 0))]));
+  return { thrustBy: 'model', mode: 'physics', variant: opt.variant, scene: true, model, thrust: R.thrust, pThrust: R.pThrust, tilt: R.tilt, action: c, ctrl: R.ctrl, throttle: R.throttle, throttleP: R.throttleP, probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0),
+    fellBack: P.fellBack, upstream: { url: P.url, body, sentUpstream: P.sent !== body ? P.sent : undefined, request, rawResponse: raw, response: j }, simState: s, explain: null }; }
 export async function decide(s, opt = {}) {
+  if (SCENE_VARIANTS.includes(opt.variant) || SCENE_T.includes(opt.variant)) return decideScene(s, opt.model || MODEL, performance.now(), opt);
   const mode = opt.mode === 'hints' ? 'hints' : 'physics', variant = PHYS_VARIANTS[opt.variant] ? opt.variant : DEFAULTS.variant, model = opt.model || MODEL;
   const t0 = performance.now();
   if (opt.variant === 'rival') return decideMulti(s, model, t0, opt.host, true, PERSONAS[opt.persona] ? opt.persona : 'careful');
@@ -72,7 +87,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const q = JSON.parse(b), d = q.sim ? await decide(q.sim, q) : await decide(q);
         res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(d));
       }
-      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: Object.keys(PHYS_VARIANTS), personas: Object.keys(PERSONAS) })); }
+      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T], personas: Object.keys(PERSONAS) })); }
       const f = req.url === '/sim.mjs' ? 'sim.mjs' : 'index.html';
       res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
       res.end(fs.readFileSync(path.join(DIR, f)));

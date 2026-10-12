@@ -10,11 +10,11 @@ const scores = [], all = [], bad = [], climbs = [], rises = [], fuels = []; let 
 const opt = { mode: process.env.MODE || 'physics', variant: process.env.VARIANT, model: process.env.MODEL, persona: process.env.PERSONA, host: process.env.OLLAMA_HOST_KEY || 'primary' };
 for (const st of starts) {
   const s = newState(st); let d = { thrust: false, tilt: 'center' }, lat = [], appliedT = 0; const y0 = s.y; let maxY = s.y, riseT = 0;
-  while (!s.outcome) {
+  while (!s.outcome) { if (s.t > +(process.env.MAX_T || 120)) { s.outcome = 'crash (timeout: still flying after ' + (process.env.MAX_T || 120) + ' s sim)'; break; }
     const r = await decide({ ...s }, opt); lat.push(r.ms); tok = r.usage?.input_tokens;
-    const o = modelState(s), ot = o.steer === 'none' ? 'center' : o.steer, ok = r.thrust === (o.engine === 'burn') && r.tilt === ot; agree += ok;
+    const o = modelState(s), ot = o.steer === 'none' ? 'center' : o.steer, ok = !!r.thrust === (o.engine === 'burn') && r.tilt === ot; agree += ok;
     if (!ok) bad.push({ t: +s.t.toFixed(1), sent: physicsState(s), model: r.action, rule: (o.engine === 'burn' ? 'burn_' : 'coast_') + ot });
-    for (let t = 0; t < TS * r.ms / 1000 && !s.outcome; t += 1 / 60) { step(s, 1 / 60, d.thrust && (d.pulse == null || s.t - appliedT < d.pulse), d.tilt); maxY = Math.max(maxY, s.y); if (s.vy > 0) riseT += 1 / 60; } // old decision during latency; burn pulse if set
+    for (let t = 0; t < TS * r.ms / 1000 && !s.outcome; t += 1 / 60) { step(s, 1 / 60, (d.pulse == null || s.t - appliedT < d.pulse) ? d.thrust : false, d.tilt); maxY = Math.max(maxY, s.y); if (s.vy > 0) riseT += 1 / 60; } // old decision during latency; burn pulse if set
     d = r; appliedT = s.t;
   }
   all.push(...lat); landed += s.outcome === 'LANDED';

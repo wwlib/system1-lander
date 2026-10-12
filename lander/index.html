@@ -125,6 +125,14 @@ function renderHow(k) { const d = k.res, u = d.upstream, ss = d.simState, f = v 
      `<h3>(b) ${esc(d.variant).toUpperCase()}: transform = none — the model answers one tiny yes/no fact per call</h3><div class="meta">Each sub-call gets only the raw numbers it needs (rounded to 0.1; fall_speed = −vy, sideways_speed and pad_distance = absolute values). Question keys are neutral ("q") because named keys biased the model. Code only maps the answers with this fixed table:</div><table class="ex">${d.table.map(t => `<tr><td colspan=3>${esc(t)}</td></tr>`).join('')}</table>` +
      `<div class="meta">answers: ${esc(JSON.stringify(Object.fromEntries(Object.entries(d.answers).filter(([a]) => !a.endsWith('_p')))))} → <b style="color:${COL[d.action]}">${d.action}</b></div>` +
      `<h3>(c)+(d) every exact body POSTed to ${esc(u.url)} and its raw response, in order</h3>` + subCallsHTML(d, true); return; }
+  if (d.scene) { const body = JSON.parse(u.body), st = String(body.state), [facts, imp] = st.split(' Impressions: ');
+    const pb = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${(+v).toFixed(2)}`).join(' · ');
+    $('howBody').innerHTML = `<div class="meta">SCENE ${esc(d.variant)} · ${esc(d.model)} · call #${k.id} · ${d.ms} ms · ${d.usage?.input_tokens ?? '?'} tok · ${esc(u.url)}</div>` +
+      `<h3>(a) prose state sent (descriptive facts${imp ? ' + perception impressions' : ''}; no action advice)</h3><pre>${esc(facts)}</pre>` +
+      (imp ? `<h3>perception layer (code; could be a vision model): judgments only, never an action</h3><pre style="color:#fc6">${esc(imp)}</pre>` : '') +
+      `<h3>(b) model's choice → controls</h3><div class="meta"><b style="color:${COL[d.action]}">${esc(d.ctrl)}</b>${d.throttle ? ` · throttle probs: ${pb(d.throttleP)}` : ''} · code only maps control names to inputs${/s\dc$/.test(d.variant) ? ' (form c: exactly one tilt yes → that tilt, else upright)' : ''}</div>` +
+      `<h3>mission + controls (question instructions)</h3>${Object.entries(body.questions).map(([q, v]) => `<div class="meta"><b>${esc(q)}</b> (${esc(v.type)}): ${esc(v.instructions)}<br>options: ${esc(JSON.stringify(v.criteria))}</div>`).join('')}` +
+      `<h3>(c) exact body POSTed (${u.body.length} bytes)</h3><pre>${esc(JSON.stringify(body, null, 2))}</pre><h3>(d) raw response</h3><pre>${esc(u.rawResponse)}</pre>`; return; }
   const raw = Object.fromEntries(Object.entries(ss).map(([a, b]) => [a, f(b)]));
   $('howBody').innerHTML = `<div class="meta">${esc(d.mode)}${d.mode === 'physics' ? '/' + esc(d.variant) : ''} · ${esc(d.model)} · call #${k.id} · ${k.wall} · sim t=${k.sentT.toFixed(2)}s · ${d.ms} ms</div>` +
    `<h3>(a) raw sim state (browser → POST /decide)</h3><pre>${esc(JSON.stringify({ ...raw, pad: { x0: PAD.x0, x1: PAD.x1, y: PAD.y } }, null, 1))}</pre>` +
@@ -169,7 +177,7 @@ const shipRows = (x, col) => row(['alt', (x.y - PAD.y).toFixed(1) + ' m'], ['vy'
 function hudHTML(now, burning, pulseLeft, rate) {
   let h = `<div class="g">SHIP · t ${s.t.toFixed(1)} s · ${opts.timeScale}×${paused ? ' · PAUSED' : ''}</div>` + shipRows(s, '#0f8');
   h += `<div class="g">PILOT · ${ai ? `AI ${esc(opts.model || 'tev1:4b')} @ ${esc(opts.host || 'primary')} · ${opts.mode === 'physics' ? esc(opts.variant) : 'hints'}` : 'MANUAL (arrows)'}</div>`;
-  h += row(['action', ai ? (dec.action ?? '-') : '-'], ['engine', burning ? `<span class="on">ON${pulseLeft != null ? ' ' + pulseLeft.toFixed(1) + ' s' : ''}</span>` : 'off']);
+  h += row(['action', ai ? (dec.action ?? '-') : '-'], ['engine', burning ? `<span class="on">${dec.throttle ? dec.throttle.toUpperCase() : 'ON'}${pulseLeft != null ? ' ' + pulseLeft.toFixed(1) + ' s' : ''}</span>` : 'off']);
   if (ai) h += row(['last', lastGap ? `${lastGap.ms} ms · ${lastGap.calls} call${lastGap.calls > 1 ? 's' : ''}` : '-'], ['lag', lastGap ? lastGap.dt.toFixed(1) + ' s' : '-']) +
     row(['now', inflight ? `calling ${Math.round(now - inflight.t0)} ms` : s.outcome ? 'done' : 'idle'], ['avg', n ? (sum / n).toFixed(0) + ' ms' : '-'], ['rate', rate + '/s']);
   if (RV.on) h += `<div class="g rv">RIVAL · ${esc(RV.persona)}</div>` + shipRows(RV.s, '#f4f') +
@@ -178,7 +186,7 @@ function hudHTML(now, burning, pulseLeft, rate) {
 let last = performance.now(), cw = 0, ch = 0;
 function frame(now) {
   const dt = paused ? 0 : Math.min(0.05, (now - last) / 1000) * (opts.timeScale || 1); last = now; ask();
-  const thrust = ai ? (dec.thrust && (dec.pulse == null || s.t - (dec.appliedSimT ?? 0) < dec.pulse)) : !!keys.ArrowUp, tilt = ai ? dec.tilt : keys.ArrowLeft ? 'left' : keys.ArrowRight ? 'right' : 'center';
+  const thrust = ai ? ((dec.pulse == null || s.t - (dec.appliedSimT ?? 0) < dec.pulse) ? dec.thrust : false) : !!keys.ArrowUp, tilt = ai ? dec.tilt : keys.ArrowLeft ? 'left' : keys.ArrowRight ? 'right' : 'center';
   if (!paused) step(s, dt, thrust, tilt);
   if (s.outcome && s.outcomeT == null) s.outcomeT = s.t;
   let rThrust = false; if (RV.on) { askRival(); rThrust = RV.dec.thrust && (RV.dec.pulse == null || RV.s.t - (RV.dec.appliedSimT ?? 0) < RV.dec.pulse);

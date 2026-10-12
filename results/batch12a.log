@@ -1,0 +1,28 @@
+{"x":40} -> crash (off pad, vy -5.2 ≥ 4) score=0.0 t=15.2s fuel=85 decisions=25 avg=609ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (off pad) score=0.0 t=22.6s fuel=74 decisions=69 avg=322ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vx -2.8 ≥ 2, tilt -0.35 ≥ 0.3) score=0.0 t=21.0s fuel=74 decisions=66 avg=312ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad, vy -6.5 ≥ 4) score=0.0 t=21.2s fuel=79 decisions=67 avg=311ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad, vy -6.6 ≥ 4, vx 2.0 ≥ 2) score=0.0 t=18.1s fuel=83 decisions=56 avg=316ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad, vy -4.3 ≥ 4) score=0.0 t=20.5s fuel=78 decisions=64 avg=318ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s4tp: TS=1 landed 0/6, avg latency 337 ms, n=347, input_tokens 1246, agree-with-rules 15%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 79%
+{"x":40} -> crash (off pad, tilt -0.32 ≥ 0.3) score=0.0 t=26.5s fuel=68 decisions=84 avg=311ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> LANDED score=8.1 {"base":9,"fuel_bonus":0.6,"vertical":0,"horizontal":-0.1,"tilt":0,"off_center":-1.4} t=34.4s fuel=59 decisions=108 avg=313ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vx -2.3 ≥ 2) score=0.0 t=21.3s fuel=74 decisions=68 avg=309ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad) score=0.0 t=31.7s fuel=61 decisions=100 avg=312ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad, vx 2.2 ≥ 2) score=0.0 t=23.1s fuel=73 decisions=73 avg=311ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=23.9s fuel=72 decisions=75 avg=313ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s4tn: TS=1 landed 1/6, avg latency 312 ms, n=508, input_tokens 1254, agree-with-rules 20%, avg climb 0.0m, avg rising 0.0s, avg score 1.35, avg fuel left 68%
+{"x":40} -> crash (off pad, vy -51.1 ≥ 4, tilt 0.35 ≥ 0.3) score=0.0 t=109.5s fuel=0 decisions=344 avg=308ms climb=707.4m rising=64.7s
+{"x":135,"vx":2} -> crash (off pad, vy -53.9 ≥ 4) score=0.0 t=110.9s fuel=0 decisions=348 avg=309ms climb=794.1m rising=67.7s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -60.1 ≥ 4) score=0.0 t=114.7s fuel=0 decisions=360 avg=310ms climb=1028.2m rising=76.2s
+{"x":20,"y":140} -> crash (vy -52.7 ≥ 4) score=0.0 t=110.5s fuel=0 decisions=347 avg=309ms climb=728.5m rising=66.1s
+{"x":20,"vx":1.7} -> crash (off pad, vy -9.9 ≥ 4) score=0.0 t=15.5s fuel=89 decisions=49 avg=306ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad, vy -52.2 ≥ 4) score=0.0 t=110.0s fuel=0 decisions=346 avg=307ms climb=736.2m rising=65.7s
+SUMMARY [primary] tev1:4b physics/scene_s1tp: TS=1 landed 0/6, avg latency 309 ms, n=1794, input_tokens 1182, agree-with-rules 15%, avg climb 665.7m, avg rising 56.7s, avg score 0.00, avg fuel left 15%
+{"x":40} -> crash (off pad, vy -101.7 ≥ 4) score=0.0 t=144.0s fuel=0 decisions=974 avg=137ms climb=3095.4m rising=80.5s
+{"x":135,"vx":2} -> crash (vy -103.5 ≥ 4) score=0.0 t=145.8s fuel=0 decisions=1017 avg=136ms climb=3199.8m rising=81.6s
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) score=0.0 t=25.7s fuel=23 decisions=175 avg=137ms climb=754.9m rising=25.5s
+{"x":20,"y":140} -> crash (off pad, vy -103.4 ≥ 4) score=0.0 t=145.7s fuel=0 decisions=972 avg=139ms climb=3177.6m rising=81.4s
+{"x":20,"vx":1.7} -> crash (vy -104.3 ≥ 4) score=0.0 t=146.8s fuel=0 decisions=1020 avg=136ms climb=3250.2m rising=82.1s
+{"x":43,"vx":-1.2} -> crash (out of bounds) score=0.0 t=59.5s fuel=0 decisions=403 avg=136ms climb=2747.1m rising=59.2s
+SUMMARY [primary] tev1:4b physics/scene_s4a: TS=1 landed 0/6, avg latency 137 ms, n=4561, input_tokens 452, agree-with-rules 4%, avg climb 2704.2m, avg rising 68.4s, avg score 0.00, avg fuel left 4%

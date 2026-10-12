@@ -143,9 +143,75 @@ The personalities change behaviour (fast and fuel-light vs slow and fuel-heavy),
 
 Solo player latency is ~750 ms. Sharing the host costs the player roughly 5–45% more latency, and its landing rate drops from 6/6 solo to 2–3/4. (These were cached rival profiles: 7 to 13 sub-calls per decision.)
 
+## Experiment: scene mode (the model owns the decision)
+
+In `multi`/`multi2` the piloting logic lives in the code's mapping table. Scene mode tries the opposite: **perception layer → decision model → controls.** The model gets a prose description of the situation and picks the controls itself. Code only maps control names to inputs (`sceneRead` in `sim.mjs`).
+
+```mermaid
+flowchart LR
+  S[sim state] --> P["perception layer (code, could be a vision model):<br/>facts + impressions, no actions"]
+  P -->|prose| D["decision model<br/>choice: throttle, tilt"]
+  D -->|control names| C["code: name → input<br/>(no logic)"]
+  C --> S
+```
+
+Variants (all in the UI variant dropdown as `scene_*`; the panel shows the exact prose, the perception sentences, and the chosen control):
+
+| variant | prose | output |
+|---|---|---|
+| `s1` | facts with numbers: "You are 42 meters above the ground, falling at 6.0 meters per second. The landing pad's center is 30 meters to your right…" | `a` one 6-way choice · `b` engine noul + tilt choice · `c` three nouls |
+| `s2` | the same facts as words from fixed bins ("high", "falling quickly"). A gray area: the bin edges are code choices, but they describe size, not what to do | a / b / c |
+| `s3` | s1 + the last 2 decisions as short "frames" (state + what you chose) | a / b / c |
+| `s4` | s1 + **perception impressions** | a / b / c |
+| `s1t*`, `s4t*` | s1 / s4 with **graded throttle** (off / low / medium / high = 0, 0.3, 0.55, 1.0 × thrust; fuel burn proportional). `p` = adds "Last command: low thrust, tilt none", `n` = without it, `r` = options listed in reverse order | throttle choice + tilt choice |
+
+**Judgments the perception layer makes (code, `perceive()` in `sim.mjs`):**
+- descent compared with a height-scaled comfort speed (alt/10, clamped 0.7–5 m/s): "falling too fast for this height", "about right", "descending slowly", "rising";
+- sideways approach compared with a distance-scaled pace (distance/8, clamped to 3 m/s): "will overshoot the pad", "will fall short of it", "on track", "drifting away", "over the pad";
+- tilted noticeably (> 5°), close to the ground (< 10 m), fuel running low (< 20%).
+
+It **never** names an action. That is the difference from the old hints mode, whose labels named the action directly (`engine: burn`, `steer: left`). Here the model still has to turn "too fast" into "more throttle" and "will fall short of the pad to your right" into "tilt right with the engine on".
+
+The mission (land gently and upright on the pad, save fuel, survivable limits) and how the controls work (gravity 1.6 m/s², engine along the ship's axis, tilt only pushes sideways while the engine fires) are in the question instructions, the same for every variant.
+
+### Results
+
+**Offline**, 24 states vs the rule reference (`tools/sceneeval.mjs`, `results/scene-eval.txt`). A constant "engine off, upright" already scores about 13/24 engine and 17/24 tilt on this set.
+
+| model | factual s1/s2/s3 (best) | perception s4 (best) |
+|---|---|---|
+| tev1:4b | engine 14/24, both 9/24 (≈ the constant baseline) | engine 17/24, both 15/24 (`s4b`) |
+| nimble:9b | engine 17/24, both 13/24 (`s1a`) | not run |
+| tev1:0.8b | 13–14/24: answers "engine off, upright" almost every time | not run |
+
+**Throttle vs the last command** (`tools/probes/throttle-adjust.mjs`). Here the model clearly does what the user hoped:
+- **With perception (`s4tp`, tev1:4b):** "too fast" + last command low → medium (3/3); "too fast" from off or medium → steps up (9/9); "slow" never steps up, and steps down from medium or high (5/6).
+- **With factual prose only (`s1tp`):** the model mostly **copies the last command** (e.g. "about right" + last high → high, 3/3).
+- **Order bias:** listing the options high→off changed answers (e.g. too fast + last high → medium instead of staying at high).
+
+**Flying**, 6 starts each, NVIDIA host (`results/batch12a.log`, `batch13.log`):
+
+| variant | model | speed | landed | avg score | fuel left | latency | typical failure |
+|---|---|---|---|---|---|---|---|
+| `scene_s4tn` (perception, throttle, no last command) | tev1:4b | 1× | 1/6 | 1.35 (one 8.1 landing) | 68% | 312 ms | off pad: steering toward the pad fails |
+| `scene_s4tp` (perception + last command) | tev1:4b | 1× | 0/6 | 0.00 | 79% | 337 ms | off pad |
+| `scene_s1tp` (facts + last command) | tev1:4b | 1× | 0/6 | 0.00 | 15% | 309 ms | latches high throttle, climbs ~670 m, runs out of fuel |
+| `scene_s4a` (perception, 6-way choice) | tev1:4b | 1× | 0/6 | 0.00 | 4% | 137 ms | climbs (≈2.7 km), runs out of fuel |
+| `scene_s1a` (facts, 6-way choice) | tev1:4b | 1× | 0/6 | 0.00 | 19% | 133 ms | climbs |
+| `scene_s4tp` | nimble:9b | 1× | 0/6 | 0.00 | 34% | 418 ms | climbs / off pad |
+| `scene_s4tn` | tev1:4b | 0.5× | 0/6 | 0.00 | 69% | 312 ms | off pad |
+| `scene_s4tp` | tev1:4b | 0.5× | 1/6 | 1.27 | 75% | 306 ms | off pad |
+| for comparison: **`multi2`** (atomic facts + mapping table) | tev1:4b | 1× | **6/6** | **7.87** | 28% | 747 ms | — |
+
+**Verdict:** when the model owns the decision from prose, it doesn't fly the lander, in our tests. With perception impressions it handles the **vertical** axis sensibly (throttle steps up when "too fast", down when "slow"), and the descent is usually survivable. It fails on the **horizontal** axis: it doesn't reliably translate "the pad is to your right and you'll fall short" into "tilt right" (most crashes are off-pad). Without impressions (factual numbers only), the models mostly ignore the numbers or copy the last command, and either fall or climb away. Larger nimble:9b did not fix this.
+
+So the perception layer carries real weight, and the remaining gap is in turning a description into a sideways manoeuvre. Possible next steps: impressions that state the geometry more directly (still without actions), few-shot examples in the instructions, or splitting throttle and tilt into separate calls with only the relevant impressions.
+
+**Model vs code, restated:** in `multi2` the model answers facts and the code decides. In scene mode the code describes (the perception layer: facts + impressions) and the model decides. Today the first flies and the second doesn't.
+
 ## Limitations
 
-- The piloting logic is in the mapping table and the choice of facts; the model answers facts. Plain code with the same rules would fly better.
+- In the flying variants (`multi`, `multi2`) the piloting logic is in the mapping table and the choice of facts; the model answers facts. Plain code with the same rules would fly better. Scene mode, where the model decides, does not land yet (see the experiment above).
 - Small N: 4–6 starts, single runs, one physics setup, a lenient landing rule. Expect variance between runs.
 - Latency depends heavily on the host and on Ollama serializing requests (two pilots ≈ double the queueing).
 - The model makes threshold errors near boundaries, e.g. 4.0 > 3 → "no" (see finding 4).
@@ -243,8 +309,8 @@ lander/
   env.mjs                 .env loader
   providers/index.mjs     Ollama / Jev / Foundry / OpenRouter adapters
   mock-systemone.mjs      fake decision API for UI work
-  tools/                  headless, race, evalq, multieval, steerq, tune, steervars
-  tools/probes/           small accuracy probes (arithmetic, number format, personas, word facts)
+  tools/                  headless, race, evalq, multieval, sceneeval, steerq, tune, steervars
+  tools/probes/           small accuracy probes (arithmetic, number format, personas, word facts, throttle-adjust)
 results/                  raw logs behind the tables above (hosts redacted)
 docs/screenshot.png
 ```

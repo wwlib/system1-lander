@@ -1,0 +1,40 @@
+# node lander/tools/sceneeval.mjs  (24 states from reference flights; agreement with the hand-written rule in sim.mjs modelState)
+# reference on these states: burns ~46%, steers 'none' ~74%  →  constant "engine off, upright" scores ~13/24 engine, ~17/24 tilt
+# (tev1:4b runs below were on the NVIDIA host; s4 runs overlapped with a headless batch, so their latency is inflated)
+tev1:4b scene_s1a: engine 13/24, tilt 17/24, both 9/24, 165 ms, 418 tok
+tev1:4b scene_s1b: engine 12/24, tilt 15/24, both 8/24, 304 ms, 1054 tok
+tev1:4b scene_s1c: engine 10/24, tilt 18/24, both 8/24, 405 ms, 2058 tok
+tev1:4b scene_s2a: engine 14/24, tilt 17/24, both 9/24, 154 ms, 384 tok
+tev1:4b scene_s2b: engine 13/24, tilt 14/24, both 8/24, 284 ms, 986 tok
+tev1:4b scene_s2c: engine 11/24, tilt 15/24, both 7/24, 391 ms, 1956 tok
+tev1:4b scene_s3a: engine 11/24, tilt 18/24, both 9/24, 169 ms, 497 tok
+tev1:4b scene_s3b: engine 10/24, tilt 19/24, both 7/24, 327 ms, 1212 tok
+tev1:4b scene_s3c: engine 9/24, tilt 18/24, both 8/24, 408 ms, 2295 tok
+tev1:4b scene_s4a: engine 16/24, tilt 18/24, both 13/24, 245 ms, 455 tok
+tev1:4b scene_s4b: engine 17/24, tilt 19/24, both 15/24, 449 ms, 1128 tok
+tev1:4b scene_s4c: engine 15/24, tilt 17/24, both 12/24, 561 ms, 2169 tok
+nimble:9b scene_s1a: engine 17/24, tilt 19/24, both 13/24, 623 ms, 456 tok
+nimble:9b scene_s1b: engine 13/24, tilt 18/24, both 10/24, 409 ms, 1130 tok
+nimble:9b scene_s2a: engine 11/24, tilt 19/24, both 8/24, 203 ms, 422 tok
+nimble:9b scene_s3a: engine 12/24, tilt 20/24, both 10/24, 230 ms, 535 tok
+tev1:0.8b scene_s1a: engine 13/24, tilt 17/24, both 10/24, 148 ms (picks off_upright 24/24)
+tev1:0.8b scene_s2a: engine 13/24, tilt 17/24, both 10/24, 79 ms
+tev1:0.8b scene_s3a: engine 14/24, tilt 17/24, both 10/24, 97 ms
+
+# node lander/tools/probes/throttle-adjust.mjs   (3 positions per cell; chosen throttle vs LAST command: ↑ up, = same, ↓ down)
+== tev1:4b scene_s4tp (perception + last command, order off→high)
+  too_fast     last off: high/high/high (↑3) | last low: medium×3 (↑3) | last medium: high×3 (↑3) | last high: high×3 (=3)
+  about_right  last off: off×3 (=3) | last low: off/low/off (=1 ↓2) | last medium: off/medium/off (=1 ↓2) | last high: off/medium/off (↓3)
+  slow         last off: off×3 (=3) | last low: low×3 (=3) | last medium: off/medium/low (=1 ↓2) | last high: off/medium/low (↓3)
+== tev1:4b scene_s4tpr (same, options listed high→off)
+  too_fast     last off: high×3 | last low: high×3 | last medium: high×3 | last high: medium×3 (↓3)
+  about_right  last off: off×3 | last low: low×3 | last medium: off/medium/medium | last high: off/medium/off
+  slow         last off: off×3 | last low: low×3 | last medium: low/medium/medium | last high: low/low/off
+== tev1:4b scene_s1tp (factual prose + last command, no impressions)
+  too_fast     last off: high×3 (↑3) | last low: medium×3 (↑3) | last medium: medium×3 (=3) | last high: high×3 (=3)
+  about_right  last off: off/medium/medium | last low: medium×3 (↑3) | last medium: medium×3 (=3) | last high: high×3 (=3)
+  slow         last off: off/medium/off | last low: low×3 (=3) | last medium: medium×3 (=3) | last high: medium×3 (↓3)
+== nimble:9b scene_s4tp
+  too_fast     last off: medium/high/high (↑3) | last low: medium/high/high (↑3) | last medium: high×3 (↑3) | last high: medium/high/medium (=1 ↓2)
+  about_right  last off: medium/low/low (↑3) | last low: medium/low/low (↑1 =2) | last medium: medium/medium/low | last high: medium/medium/low (↓3)
+  slow         last off: medium/low/low (↑3) | last low: low×3 (=3) | last medium: medium/low/low (=1 ↓2) | last high: medium/off/low (↓3)

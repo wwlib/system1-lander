@@ -1,0 +1,32 @@
+{"x":40} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.1s fuel=0 decisions=873 avg=133ms climb=3158.3m rising=81.0s
+{"x":135,"vx":2} -> crash (out of bounds) score=0.0 t=40.8s fuel=0 decisions=298 avg=133ms climb=1847.7m rising=40.5s
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) score=0.0 t=29.2s fuel=13 decisions=210 avg=135ms climb=954.5m rising=29.0s
+{"x":20,"y":140} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.1s fuel=0 decisions=875 avg=132ms climb=3224.7m rising=81.8s
+{"x":20,"vx":1.7} -> crash (off pad, vy -18.5 ≥ 4) score=0.0 t=11.4s fuel=100 decisions=84 avg=131ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (out of bounds) score=0.0 t=39.8s fuel=0 decisions=291 avg=132ms climb=1746.2m rising=39.5s
+SUMMARY [primary] tev1:4b physics/scene_s1a: TS=1 landed 0/6, avg latency 133 ms, n=2631, input_tokens 413, agree-with-rules 0%, avg climb 1821.9m, avg rising 45.3s, avg score 0.00, avg fuel left 19%
+{"x":40} -> crash (off pad, vy -18.6 ≥ 4) score=0.0 t=11.5s fuel=100 decisions=1 avg=13059ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (out of bounds) score=0.0 t=31.1s fuel=63 decisions=73 avg=422ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vx 2.8 ≥ 2) score=0.0 t=50.2s fuel=39 decisions=120 avg=408ms climb=0.0m rising=8.5s
+{"x":20,"y":140} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.3s fuel=0 decisions=289 avg=404ms climb=1282.5m rising=79.9s
+{"x":20,"vx":1.7} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.4s fuel=0 decisions=289 avg=404ms climb=1344.9m rising=79.9s
+{"x":43,"vx":-1.2} -> crash (vy -57.6 ≥ 4) score=0.0 t=116.3s fuel=0 decisions=280 avg=403ms climb=912.9m rising=72.5s
+SUMMARY [primary] nimble:9b physics/scene_s4tp: TS=1 landed 0/6, avg latency 418 ms, n=1052, input_tokens 1326, agree-with-rules 4%, avg climb 590.1m, avg rising 40.1s, avg score 0.00, avg fuel left 34%
+{"x":40} -> crash (off pad) score=0.0 t=23.3s fuel=73 decisions=120 avg=368ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> crash (off pad) score=0.0 t=29.0s fuel=64 decisions=176 avg=306ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad) score=0.0 t=27.4s fuel=67 decisions=168 avg=303ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad) score=0.0 t=26.1s fuel=69 decisions=162 avg=302ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad) score=0.0 t=22.8s fuel=74 decisions=143 avg=303ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=27.1s fuel=67 decisions=167 avg=303ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s4tn: TS=0.5 landed 0/6, avg latency 312 ms, n=936, input_tokens 1228, agree-with-rules 15%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 69%
+{"x":40} -> crash (off pad, vy -6.6 ≥ 4) score=0.0 t=18.3s fuel=83 decisions=110 avg=305ms climb=0.0m rising=0.0s
+{"x":135,"vx":2} -> LANDED score=7.6 {"base":9,"fuel_bonus":0.6,"vertical":0,"horizontal":-0.2,"tilt":0,"off_center":-1.8} t=32.5s fuel=61 decisions=195 avg=308ms climb=0.0m rising=0.0s
+{"x":80,"vx":-3,"y":100} -> crash (off pad) score=0.0 t=20.5s fuel=76 decisions=124 avg=305ms climb=0.0m rising=0.0s
+{"x":20,"y":140} -> crash (off pad) score=0.0 t=25.7s fuel=71 decisions=154 avg=308ms climb=0.0m rising=0.0s
+{"x":20,"vx":1.7} -> crash (off pad, vy -7.4 ≥ 4) score=0.0 t=17.2s fuel=85 decisions=105 avg=303ms climb=0.0m rising=0.0s
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=21.3s fuel=76 decisions=129 avg=304ms climb=0.0m rising=0.0s
+SUMMARY [primary] tev1:4b physics/scene_s4tp: TS=0.5 landed 1/6, avg latency 306 ms, n=817, input_tokens 1234, agree-with-rules 10%, avg climb 0.0m, avg rising 0.0s, avg score 1.27, avg fuel left 75%
+{"x":40} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.1s fuel=0 decisions=1548 avg=136ms climb=3220.4m rising=81.8s
+{"x":135,"vx":2} -> crash (timeout: still flying after 120 s sim) score=0.0 t=120.0s fuel=0 decisions=1697 avg=134ms climb=3228.6m rising=81.9s
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) score=0.0 t=28.4s fuel=15 decisions=405 avg=134ms climb=950.0m rising=28.3s
+# (scene_s4a at 0.5x stopped early to bound runtime; not reported)
