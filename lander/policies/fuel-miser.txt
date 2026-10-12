@@ -1,0 +1,1 @@
+Conserve fuel above all. Let gravity do the work: above 25 m, falling up to 6 m/s is fine and the engine should stay off. Below 25 m, brake just enough to fall no faster than 3 m/s at touchdown. Drift toward the pad without wasting fuel and stop drifting once over it. Land upright on the pad.

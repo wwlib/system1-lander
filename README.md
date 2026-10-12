@@ -278,6 +278,33 @@ nimble:9b does no better than tev1:4b (also 0/6 on all four). On s5, tev1:4b nev
 
 **Model vs code, restated:** in `multi2` the model answers facts and the code decides. In scene mode the code describes (the perception layer: facts + impressions) and the model decides. Today the first flies and the second doesn't.
 
+## Experiment: policy pilot (judgment questions against a plain-English policy)
+
+The yes/no fact questions are things code could compute. In **policy** mode the model makes judgments instead. Each call's state is `{ policy, ship }`. `policy` is the text of `lander/policies/<name>.txt`; `ship` is compact JSON with named fields (height, vertical speed, pad direction and distance, sideways motion relative to the pad, fuel, crash limits). Each decision asks 4 `noul` questions (neutral key `q`, `keep_alive: '2h'`, ~390 ms in total). The questions are in `lander/policy.mjs`:
+
+- `too_fast`: is the ship falling faster than the policy allows at its height?
+- `too_slow`: is it falling slower than it needs to, or climbing?
+- `go_right` / `go_left`: does the ship need more rightward / leftward speed (sideways speed must shrink near the pad)?
+
+Code maps the **probabilities** (graded, not a 0.5 cutoff) with a fixed table:
+`throttle = clamp(0.41 + 0.9·P(too_fast) − 0.9·P(too_slow), 0, 1)` (0.41 = hover); `steer = P(right) − P(left)`, ±0.15 deadband; tilt center below 4 m.
+**To change behavior, edit the policy text, not code.** Select it with `VARIANT=policy POLICY=careful` (headless) or `physics q: policy:careful` (UI). The System 1 panel shows the policy text, the ship JSON, each probability, and the mapping.
+
+Results (`results/batch17-policy.log`, tev1:4b, 1×, 6 starts):
+
+| round | policy | landed | avg score | fuel left | ms/decision | max fall | flight time | failure modes |
+|---|---|---|---|---|---|---|---|---|
+| 1 (push right/left wording) | careful (prose) | 0/6 | 0.00 | 65% | 374 | ~4.7 | ~30 s | 5 off-pad at vx ≈ 3 (never brakes sideways), 1 tilt |
+| 2 (need-more-speed wording) | careful (prose) | 1/6 | 1.27 | 69% | 386 | ~5.0 | ~27 s | 5 off-pad: descends before reaching the pad |
+| 3 | careful (numeric limits) | 1/6 | 1.32 | 51% | 395 | ~4.1 | ~43 s | 5 off-pad (1 tilted) |
+| 3 | fuel-miser | 1/6 | 1.07 | 71% | 389 | ~5.0 | ~26 s | 5 off-pad, 4 also vy ≥ 4 |
+| 3 | aggressive | 2/6 | 1.53 | 44% | 387 | ~5.3 | ~48 s | 3 off-pad at vy ≥ 4, 1 out of bounds |
+
+- **The policy text does change behavior.** With the same code, careful falls slowest (max ~4 m/s) and uses ~50% fuel. Fuel-miser falls faster, lands soonest and keeps ~70% fuel. Aggressive falls fastest (~5.3 m/s) and lands hardest. Each probe answer shifts with the policy, e.g. at 60 m and 12 m/s down: careful 74% throttle, fuel-miser 43%.
+- **But not always the intended way:** aggressive took the longest, not the shortest, time. Numeric limits in the policy text ("no faster than 3 m/s above 30 m") were followed far better than adjectives ("gentle").
+- **Weak spot is still horizontal:** "do not descend while the pad is far to the side" was not honored. An extra `wait_high` question never fired (p < 0.26) and was dropped.
+- Verdict: a working prototype that responds to the policy text (1–2/6 landed vs 0/6 for scene mode), but well behind `multi2` (6/6).
+
 ## Limitations
 
 - In the flying variants (`multi`, `multi2`) the piloting logic is in the mapping table and the choice of facts; the model answers facts. Plain code with the same rules would fly better. Scene mode, where the model decides, does not land yet (see the experiment above).

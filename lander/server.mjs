@@ -2,6 +2,7 @@ import './env.mjs';
 import { hostTable, send } from './providers/index.mjs';
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS, SCENE_VARIANTS, SCENE_T, scenePayload, sceneRead, SCENE_MISSION } from './sim.mjs';
+import { POLICY_Q, POLICY_TABLE, policyMap, policyNames, policyText, shipJSON } from './policy.mjs';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
 // Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
@@ -58,7 +59,25 @@ async function decideScene(s, model, t0, opt) {
   const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? R.pThrust : 1 - R.pThrust) * (tp[t] ?? (t === R.tilt ? 1 : 0))]));
   return { thrustBy: 'model', mode: 'physics', variant: opt.variant, scene: true, model, thrust: R.thrust, pThrust: R.pThrust, tilt: R.tilt, action: c, ctrl: R.ctrl, throttle: R.throttle, throttleP: R.throttleP, probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0),
     fellBack: P.fellBack, upstream: { url: P.url, body, sentUpstream: P.sent !== body ? P.sent : undefined, request, rawResponse: raw, response: j }, simState: s, explain: null }; }
+// Policy mode: 4 noul calls judging the ship against a plain-English policy file; graded probabilities → throttle/steer (POLICY_TABLE).
+async function decidePolicy(s, model, t0, opt) {
+  const name = policyNames().includes(opt.policy) ? opt.policy : 'careful', policy = policyText(name), ship = shipJSON(s), ans = {}, calls = []; let url, fellBack = false;
+  for (const m of POLICY_Q) {
+    const request = { model, state: { policy, ship }, questions: { q: m.q }, keep_alive: '2h' }, body = JSON.stringify(request), c0 = performance.now();
+    const P = await post(opt.host, body), r = P.r; url = P.url; fellBack = fellBack || P.fellBack;
+    if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
+    const raw = await r.text(), j = JSON.parse(raw), A = j.answers?.q ?? {}, p = A.noul ?? 0;
+    ans[m.name] = p > 0.5; ans[m.name + '_p'] = Math.round(p * 1000) / 1000;
+    calls.push({ name: m.name, body, request, rawResponse: raw, response: j, p, answer: `${ans[m.name]} (p=${p.toFixed(2)})`, usage: j.usage, ms: Math.round(performance.now() - c0) });
+  }
+  const { throttle, tilt } = policyMap(ans, s), thrust = throttle > 0 ? throttle : false, c = (thrust ? 'burn_' : 'coast_') + tilt;
+  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? (thrust ? 1 : 0) : (thrust ? 0 : 1)) * (t === tilt ? 1 : 0)]));
+  const usage = { input_tokens: calls.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: calls.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: calls.length };
+  return { thrustBy: 'model', mode: 'physics', variant: 'policy:' + name, policy: name, policyText: policy, model, thrust, pThrust: throttle, throttle: Math.round(throttle * 100) + '%', tilt, action: c, probs: pr, usage, ms: Math.round(performance.now() - t0), answers: ans, table: POLICY_TABLE,
+    fellBack, upstream: { url, multi: true, calls, body: calls[0].body, request: { model, state: { policy, ship }, questions: Object.fromEntries(POLICY_Q.map(m => [m.name, m.q])), keep_alive: '2h' }, rawResponse: calls.map(x => x.rawResponse).join('\n'), response: calls.map(x => x.response) }, simState: s, explain: null };
+}
 export async function decide(s, opt = {}) {
+  if (opt.variant === 'policy' || String(opt.variant).startsWith('policy:')) return decidePolicy(s, opt.model || MODEL, performance.now(), { ...opt, policy: String(opt.variant).startsWith('policy:') ? opt.variant.slice(7) : opt.policy });
   if (SCENE_VARIANTS.includes(opt.variant) || SCENE_T.includes(opt.variant)) return decideScene(s, opt.model || MODEL, performance.now(), opt);
   const mode = opt.mode === 'hints' ? 'hints' : 'physics', variant = PHYS_VARIANTS[opt.variant] ? opt.variant : DEFAULTS.variant, model = opt.model || MODEL;
   const t0 = performance.now();
@@ -87,7 +106,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const q = JSON.parse(b), d = q.sim ? await decide(q.sim, q) : await decide(q);
         res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(d));
       }
-      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T], personas: Object.keys(PERSONAS) })); }
+      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T, ...policyNames().map(n => 'policy:' + n)], personas: Object.keys(PERSONAS), policies: policyNames(), policyTexts: Object.fromEntries(policyNames().map(n => [n, policyText(n)])) })); }
       const f = req.url === '/sim.mjs' ? 'sim.mjs' : 'index.html';
       res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
       res.end(fs.readFileSync(path.join(DIR, f)));

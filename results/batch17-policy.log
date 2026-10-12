@@ -1,0 +1,44 @@
+# batch17 policy pilot, tev1:4b, TS=1, EXTRA=2 (6 starts). Round 1/2 = careful only, original prose policy text.
+# round 1: initial wording (steer = 'should the ship push right/left'; upright below 2 m)
+{"x":40} -> crash (off pad, vx 3.1 ≥ 2) score=0.0 t=29.2s fuel=66 decisions=77 avg=375ms climb=0.0m rising=0.0s maxfall=4.4 avgthr=0.39
+{"x":135,"vx":2} -> crash (tilt -0.35 ≥ 0.3) score=0.0 t=30.3s fuel=64 decisions=79 avg=377ms climb=0.0m rising=0.0s maxfall=5.1 avgthr=0.40
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vx 3.0 ≥ 2) score=0.0 t=24.8s fuel=71 decisions=66 avg=370ms climb=0.0m rising=0.0s maxfall=4.4 avgthr=0.39
+{"x":20,"y":140} -> crash (off pad, vx 3.1 ≥ 2) score=0.0 t=35.4s fuel=59 decisions=93 avg=374ms climb=0.0m rising=0.0s maxfall=4.3 avgthr=0.38
+{"x":20,"vx":1.7} -> crash (off pad, vx 3.1 ≥ 2) score=0.0 t=30.5s fuel=65 decisions=81 avg=372ms climb=0.0m rising=0.0s maxfall=5.2 avgthr=0.39
+{"x":43,"vx":-1.2} -> crash (off pad, vx 3.2 ≥ 2) score=0.0 t=29.5s fuel=66 decisions=78 avg=373ms climb=0.0m rising=0.0s maxfall=4.7 avgthr=0.39
+SUMMARY [primary] tev1:4b physics/policy/careful: TS=1 landed 0/6, avg latency 374 ms, n=474, input_tokens 1256, agree-with-rules 5%, avg climb 0.0m, avg rising 0.0s, avg score 0.00, avg fuel left 65%
+# round 2 (steer wording r2: 'need more rightward/leftward speed' + sideways_vs_pad field; upright below 4 m)
+{"x":40} -> crash (off pad) score=0.0 t=27.3s fuel=69 decisions=69 avg=389ms climb=0.0m rising=0.0s maxfall=5.0 avgthr=0.39
+{"x":135,"vx":2} -> LANDED score=7.6 {"base":9,"fuel_bonus":0.7,"vertical":-1.6,"horizontal":-0.4,"tilt":0,"off_center":-0.1} t=29.7s fuel=66 decisions=75 avg=387ms climb=0.0m rising=0.0s maxfall=4.8 avgthr=0.39
+{"x":80,"vx":-3,"y":100} -> crash (off pad) score=0.0 t=22.6s fuel=75 decisions=57 avg=388ms climb=0.0m rising=0.0s maxfall=5.1 avgthr=0.38
+{"x":20,"y":140} -> crash (off pad) score=0.0 t=31.7s fuel=64 decisions=81 avg=382ms climb=0.0m rising=0.0s maxfall=5.0 avgthr=0.38
+{"x":20,"vx":1.7} -> crash (off pad) score=0.0 t=25.7s fuel=71 decisions=65 avg=386ms climb=0.0m rising=0.0s maxfall=5.1 avgthr=0.38
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=28.0s fuel=69 decisions=72 avg=382ms climb=0.0m rising=0.0s maxfall=4.8 avgthr=0.38
+SUMMARY [primary] tev1:4b physics/policy/careful: TS=1 landed 1/6, avg latency 386 ms, n=419, input_tokens 1348, agree-with-rules 8%, avg climb 0.0m, avg rising 0.0s, avg score 1.27, avg fuel left 69%
+# round 3 (policies with numeric limits; wording r2)
+{"x":40} -> crash (off pad) score=0.0 t=43.3s fuel=49 decisions=107 avg=394ms climb=0.0m rising=0.0s maxfall=3.6 avgthr=0.40
+{"x":135,"vx":2} -> LANDED score=7.9 {"base":9,"fuel_bonus":0.4,"vertical":-0.8,"horizontal":-0.6,"tilt":0,"off_center":-0.1} t=46.2s fuel=43 decisions=114 avg=395ms climb=0.0m rising=0.0s maxfall=4.1 avgthr=0.42
+{"x":80,"vx":-3,"y":100} -> crash (off pad) score=0.0 t=30.9s fuel=64 decisions=77 avg=390ms climb=0.0m rising=0.0s maxfall=4.2 avgthr=0.40
+{"x":20,"y":140} -> crash (off pad) score=0.0 t=46.1s fuel=46 decisions=114 avg=393ms climb=0.0m rising=0.0s maxfall=4.2 avgthr=0.39
+{"x":20,"vx":1.7} -> crash (off pad, tilt -0.35 ≥ 0.3) score=0.0 t=39.1s fuel=53 decisions=96 avg=399ms climb=0.0m rising=0.0s maxfall=4.1 avgthr=0.40
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=41.5s fuel=50 decisions=102 avg=397ms climb=0.0m rising=0.0s maxfall=4.2 avgthr=0.41
+SUMMARY [primary] tev1:4b physics/policy/careful: TS=1 landed 1/6, avg latency 395 ms, n=610, input_tokens 1476, agree-with-rules 12%, avg climb 0.0m, avg rising 0.0s, avg score 1.32, avg fuel left 51%
+{"x":40} -> crash (off pad, vy -4.1 ≥ 4) score=0.0 t=26.4s fuel=71 decisions=68 avg=386ms climb=0.0m rising=0.0s maxfall=5.3 avgthr=0.38
+{"x":135,"vx":2} -> LANDED score=6.4 {"base":9,"fuel_bonus":0.7,"vertical":-2.9,"horizontal":0,"tilt":0,"off_center":-0.4} t=26.9s fuel=70 decisions=68 avg=390ms climb=0.0m rising=0.0s maxfall=4.7 avgthr=0.39
+{"x":80,"vx":-3,"y":100} -> crash (off pad, vy -4.3 ≥ 4) score=0.0 t=20.5s fuel=78 decisions=52 avg=390ms climb=0.0m rising=0.0s maxfall=4.8 avgthr=0.37
+{"x":20,"y":140} -> crash (off pad, vy -4.0 ≥ 4) score=0.0 t=30.2s fuel=66 decisions=77 avg=390ms climb=0.0m rising=0.0s maxfall=5.3 avgthr=0.38
+{"x":20,"vx":1.7} -> crash (off pad, vy -4.7 ≥ 4, tilt -0.35 ≥ 0.3) score=0.0 t=25.9s fuel=72 decisions=66 avg=388ms climb=0.0m rising=0.0s maxfall=5.1 avgthr=0.37
+{"x":43,"vx":-1.2} -> crash (off pad) score=0.0 t=26.1s fuel=71 decisions=66 avg=393ms climb=0.0m rising=0.0s maxfall=5.0 avgthr=0.37
+SUMMARY [primary] tev1:4b physics/policy/fuel-miser: TS=1 landed 1/6, avg latency 389 ms, n=397, input_tokens 1392, agree-with-rules 5%, avg climb 0.0m, avg rising 0.0s, avg score 1.07, avg fuel left 71%
+{"x":40} -> LANDED score=3.5 {"base":9,"fuel_bonus":0.4,"vertical":-2.7,"horizontal":-1.9,"tilt":0,"off_center":-1.3} t=48.0s fuel=43 decisions=122 avg=389ms climb=0.0m rising=0.0s maxfall=5.3 avgthr=0.41
+{"x":135,"vx":2} -> LANDED score=5.7 {"base":9,"fuel_bonus":0.4,"vertical":-2.6,"horizontal":-0.2,"tilt":-0.8,"off_center":-0.1} t=51.3s fuel=40 decisions=131 avg=388ms climb=0.0m rising=0.0s maxfall=5.4 avgthr=0.40
+{"x":80,"vx":-3,"y":100} -> crash (out of bounds) score=0.0 t=29.7s fuel=65 decisions=76 avg=389ms climb=0.0m rising=0.0s maxfall=2.3 avgthr=0.40
+{"x":20,"y":140} -> crash (off pad, vy -4.3 ≥ 4) score=0.0 t=57.4s fuel=31 decisions=148 avg=386ms climb=0.0m rising=0.0s maxfall=5.4 avgthr=0.40
+{"x":20,"vx":1.7} -> crash (off pad, vy -4.2 ≥ 4) score=0.0 t=49.2s fuel=42 decisions=127 avg=385ms climb=0.0m rising=0.0s maxfall=5.1 avgthr=0.40
+{"x":43,"vx":-1.2} -> crash (off pad, vy -4.1 ≥ 4, vx 4.7 ≥ 2) score=0.0 t=51.0s fuel=40 decisions=130 avg=389ms climb=0.0m rising=0.0s maxfall=5.2 avgthr=0.39
+SUMMARY [primary] tev1:4b physics/policy/aggressive: TS=1 landed 2/6, avg latency 387 ms, n=734, input_tokens 1400, agree-with-rules 4%, avg climb 0.0m, avg rising 0.0s, avg score 1.53, avg fuel left 44%
+# policy texts used in round 3:
+## careful: Safety first. Above 30 m, fall no faster than 3 m/s; below 30 m, no faster than 1.5 m/s. While the pad is still more than 20 m to the side, do not descend below 40 m: hold height and move toward the pad. Move sideways only slowly and stop drifting once over the pad. Touch down very gently and upright. Use fuel freely if it keeps the ship safe.
+## fuel-miser: Conserve fuel above all. Let gravity do the work: above 25 m, falling up to 6 m/s is fine and the engine should stay off. Below 25 m, brake just enough to fall no faster than 3 m/s at touchdown. Drift toward the pad without wasting fuel and stop drifting once over it. Land upright on the pad.
+## aggressive: Land as quickly as possible. Above 30 m, fall fast, up to 8 m/s. Below 30 m, brake hard to fall no faster than 3.5 m/s at touchdown. Move quickly toward the pad, then stop drifting once over it. Never climb. A hard but survivable touchdown on the pad, upright, is fine.
+BATCH17 DONE
