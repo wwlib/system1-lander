@@ -1,0 +1,94 @@
+# batch18 criteria mode. Part A: offline probe (lander/tools/criteriaprobe.mjs, CRIT=user-v1)
+== nimble:9b  criteria=user-v1
+✓✓ The pad is directly below.                       dir=none 0.99 vel=none 0.99 (want none/none) 474ms
+✓✓ The pad is very near, just a little to the right. dir=right 0.99 vel=very_slow 0.86 (want right/very_slow) 353ms
+✓✓ The pad is very near, just a little to the left. dir=left 1.00 vel=very_slow 0.84 (want left/very_slow) 308ms
+✓✓ The pad is near, to the right.                   dir=right 0.99 vel=slow 0.69 (want right/slow) 312ms
+✓✓ The pad is near, to the left.                    dir=left 0.99 vel=slow 0.72 (want left/slow) 317ms
+✓✓ The pad is far to the right.                     dir=right 1.00 vel=fast 1.00 (want right/fast) 420ms
+✓✓ The pad is far to the left.                      dir=left 1.00 vel=fast 0.98 (want left/fast) 319ms
+✓✓ The pad is way in the distance to the right.     dir=right 1.00 vel=fast 1.00 (want right/fast) 317ms
+✓✓ The pad is way in the distance to the left.      dir=left 1.00 vel=fast 0.99 (want left/fast) 311ms
+✓ The lander is at high altitude and is rising.                          thrust=none large:0.00 medium:0.00 small:0.08 none:0.92 (want none) 186ms
+✓ The lander is at high altitude and is descending very slowly.          thrust=small large:0.00 medium:0.00 small:1.00 none:0.00 (want small,none) 145ms
+✓ The lander is at high altitude and is descending slowly.               thrust=small large:0.00 medium:0.00 small:1.00 none:0.00 (want small,none) 160ms
+✗ The lander is at high altitude and is descending fast.                 thrust=large large:0.89 medium:0.01 small:0.11 none:0.00 (want small,none) 164ms
+✓ The lander is at high altitude and is descending very fast.            thrust=large large:0.95 medium:0.00 small:0.05 none:0.00 (want medium,large) 172ms
+✓ The lander is at medium altitude and is rising.                        thrust=none large:0.01 medium:0.00 small:0.04 none:0.95 (want none) 143ms
+✓ The lander is at medium altitude and is descending very slowly.        thrust=small large:0.00 medium:0.06 small:0.93 none:0.00 (want small) 160ms
+✓ The lander is at medium altitude and is descending slowly.             thrust=small large:0.00 medium:0.09 small:0.91 none:0.00 (want small) 158ms
+✗ The lander is at medium altitude and is descending fast.               thrust=large large:0.91 medium:0.06 small:0.03 none:0.00 (want medium,small) 158ms
+✓ The lander is at medium altitude and is descending very fast.          thrust=large large:0.96 medium:0.02 small:0.02 none:0.00 (want large,medium) 166ms
+✓ The lander is near the ground (low altitude) and is rising.            thrust=none large:0.03 medium:0.01 small:0.02 none:0.94 (want none) 165ms
+✓ The lander is near the ground (low altitude) and is descending very slowly. thrust=small large:0.00 medium:0.49 small:0.51 none:0.00 (want small,medium) 157ms
+✓ The lander is near the ground (low altitude) and is descending slowly. thrust=medium large:0.00 medium:0.79 small:0.21 none:0.00 (want medium) 148ms
+✓ The lander is near the ground (low altitude) and is descending fast.   thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 153ms
+✓ The lander is near the ground (low altitude) and is descending very fast. thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 167ms
+✓ The lander is about to touch down and is rising.                       thrust=none large:0.05 medium:0.02 small:0.05 none:0.88 (want none) 161ms
+✓ The lander is about to touch down and is descending very slowly.       thrust=small large:0.00 medium:0.07 small:0.93 none:0.00 (want small,medium) 143ms
+✗ The lander is about to touch down and is descending slowly.            thrust=small large:0.00 medium:0.11 small:0.89 none:0.00 (want medium) 154ms
+✓ The lander is about to touch down and is descending fast.              thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 159ms
+✓ The lander is about to touch down and is descending very fast.         thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 170ms
+  drift: The pad is near, to the right. The lander is drifting to the left very fast.     dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left fast.          dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left slowly.        dir=right vel=slow
+  drift: The pad is near, to the right. The lander is not drifting sideways.              dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right slowly.       dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right fast.         dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right very fast.    dir=right vel=slow
+SUMMARY nimble:9b: direction 9/9, velocity 9/9, thrust 17/20, median 172 ms
+== tev1:4b  criteria=user-v1
+✓✗ The pad is directly below.                       dir=none 0.81 vel=slow 0.43 (want none/none) 236ms
+✓✗ The pad is very near, just a little to the right. dir=right 0.99 vel=slow 0.64 (want right/very_slow) 235ms
+✓✗ The pad is very near, just a little to the left. dir=left 1.00 vel=slow 0.67 (want left/very_slow) 242ms
+✓✓ The pad is near, to the right.                   dir=right 0.99 vel=slow 0.79 (want right/slow) 243ms
+✓✓ The pad is near, to the left.                    dir=left 0.99 vel=slow 0.71 (want left/slow) 258ms
+✓✓ The pad is far to the right.                     dir=right 0.98 vel=fast 1.00 (want right/fast) 256ms
+✓✓ The pad is far to the left.                      dir=left 0.93 vel=fast 0.99 (want left/fast) 252ms
+✓✓ The pad is way in the distance to the right.     dir=right 1.00 vel=fast 0.99 (want right/fast) 255ms
+✓✓ The pad is way in the distance to the left.      dir=left 0.99 vel=fast 0.99 (want left/fast) 254ms
+✓ The lander is at high altitude and is rising.                          thrust=none large:0.00 medium:0.00 small:0.23 none:0.77 (want none) 127ms
+✓ The lander is at high altitude and is descending very slowly.          thrust=small large:0.00 medium:0.01 small:0.99 none:0.00 (want small,none) 110ms
+✓ The lander is at high altitude and is descending slowly.               thrust=small large:0.00 medium:0.01 small:0.99 none:0.00 (want small,none) 117ms
+✗ The lander is at high altitude and is descending fast.                 thrust=large large:0.67 medium:0.07 small:0.26 none:0.00 (want small,none) 117ms
+✓ The lander is at high altitude and is descending very fast.            thrust=large large:0.71 medium:0.05 small:0.24 none:0.00 (want medium,large) 118ms
+✓ The lander is at medium altitude and is rising.                        thrust=none large:0.00 medium:0.05 small:0.46 none:0.49 (want none) 117ms
+✓ The lander is at medium altitude and is descending very slowly.        thrust=small large:0.00 medium:0.07 small:0.93 none:0.00 (want small) 117ms
+✓ The lander is at medium altitude and is descending slowly.             thrust=small large:0.00 medium:0.10 small:0.90 none:0.00 (want small) 115ms
+✗ The lander is at medium altitude and is descending fast.               thrust=large large:0.96 medium:0.02 small:0.01 none:0.00 (want medium,small) 118ms
+✓ The lander is at medium altitude and is descending very fast.          thrust=large large:0.98 medium:0.01 small:0.01 none:0.00 (want large,medium) 120ms
+✓ The lander is near the ground (low altitude) and is rising.            thrust=none large:0.05 medium:0.06 small:0.06 none:0.83 (want none) 118ms
+✓ The lander is near the ground (low altitude) and is descending very slowly. thrust=medium large:0.00 medium:0.51 small:0.49 none:0.00 (want small,medium) 198ms
+✓ The lander is near the ground (low altitude) and is descending slowly. thrust=medium large:0.00 medium:0.73 small:0.27 none:0.00 (want medium) 116ms
+✓ The lander is near the ground (low altitude) and is descending fast.   thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 116ms
+✓ The lander is near the ground (low altitude) and is descending very fast. thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 113ms
+✓ The lander is about to touch down and is rising.                       thrust=none large:0.21 medium:0.24 small:0.23 none:0.33 (want none) 119ms
+✓ The lander is about to touch down and is descending very slowly.       thrust=small large:0.00 medium:0.14 small:0.86 none:0.00 (want small,medium) 122ms
+✗ The lander is about to touch down and is descending slowly.            thrust=small large:0.00 medium:0.26 small:0.74 none:0.00 (want medium) 123ms
+✓ The lander is about to touch down and is descending fast.              thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 121ms
+✓ The lander is about to touch down and is descending very fast.         thrust=large large:1.00 medium:0.00 small:0.00 none:0.00 (want large) 120ms
+  drift: The pad is near, to the right. The lander is drifting to the left very fast.     dir=left vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left fast.          dir=left vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left slowly.        dir=left vel=slow
+  drift: The pad is near, to the right. The lander is not drifting sideways.              dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right slowly.       dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right fast.         dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right very fast.    dir=right vel=slow
+SUMMARY tev1:4b: direction 9/9, velocity 6/9, thrust 17/20, median 127 ms
+# Part B: flown headless TS=1 EXTRA=2 (6 starts), one /v1/systemone call per decision
+# round 1: criteria/user-v1 (user's wording verbatim)
+{"x":40} -> LANDED score=7.9 {"base":9,"fuel_bonus":0.5,"vertical":-1.1,"horizontal":-0.2,"tilt":0,"off_center":-0.3} t=44.4s fuel=47 decisions=135 avg=322ms climb=0.0m rising=0.0s maxfall=3.3 avgthr=0.40
+{"x":135,"vx":2} -> LANDED score=6.6 {"base":9,"fuel_bonus":0.5,"vertical":-2.3,"horizontal":-0.2,"tilt":0,"off_center":-0.4} t=44.7s fuel=47 decisions=139 avg=315ms climb=0.0m rising=0.0s maxfall=3.5 avgthr=0.40
+{"x":80,"vx":-3,"y":100} -> LANDED score=7.2 {"base":9,"fuel_bonus":0.5,"vertical":-1.9,"horizontal":-0.2,"tilt":0,"off_center":-0.2} t=41.2s fuel=51 decisions=130 avg=309ms climb=0.0m rising=0.0s maxfall=3.3 avgthr=0.40
+{"x":20,"y":140} -> LANDED score=6.6 {"base":9,"fuel_bonus":0.4,"vertical":-2.2,"horizontal":-0.2,"tilt":0,"off_center":-0.4} t=52.5s fuel=37 decisions=168 avg=305ms climb=0.0m rising=0.0s maxfall=3.3 avgthr=0.40
+{"x":20,"vx":1.7} -> LANDED score=6.8 {"base":9,"fuel_bonus":0.4,"vertical":-2.2,"horizontal":-0.1,"tilt":0,"off_center":-0.3} t=49.2s fuel=42 decisions=157 avg=306ms climb=0.0m rising=0.0s maxfall=3.2 avgthr=0.40
+{"x":43,"vx":-1.2} -> LANDED score=6.8 {"base":9,"fuel_bonus":0.5,"vertical":-2.2,"horizontal":-0.2,"tilt":0,"off_center":-0.3} t=45.4s fuel=46 decisions=146 avg=303ms climb=0.0m rising=0.0s maxfall=3.2 avgthr=0.40
+SUMMARY [primary] nimble:9b physics/criteria:user-v1: TS=1 landed 6/6, avg latency 310 ms, n=875, input_tokens 1576, agree-with-rules 13%, avg climb 0.0m, avg rising 0.0s, avg score 6.98, avg fuel left 45%
+{"x":40} -> LANDED score=7.2 {"base":9,"fuel_bonus":0.5,"vertical":-1.3,"horizontal":-0.8,"tilt":0,"off_center":-0.2} t=39.8s fuel=52 decisions=129 avg=304ms climb=0.0m rising=4.3s maxfall=12.4 avgthr=0.49
+{"x":135,"vx":2} -> LANDED score=8.5 {"base":9,"fuel_bonus":0.5,"vertical":-0.7,"horizontal":-0.1,"tilt":0,"off_center":-0.2} t=45.0s fuel=46 decisions=180 avg=244ms climb=0.0m rising=0.0s maxfall=3.3 avgthr=0.40
+{"x":80,"vx":-3,"y":100} -> LANDED score=7.9 {"base":9,"fuel_bonus":0.5,"vertical":-1.3,"horizontal":-0.2,"tilt":0,"off_center":-0.1} t=37.5s fuel=55 decisions=149 avg=246ms climb=0.0m rising=0.0s maxfall=3.3 avgthr=0.40
+{"x":20,"y":140} -> LANDED score=7.3 {"base":9,"fuel_bonus":0.4,"vertical":-1.6,"horizontal":-0.2,"tilt":0,"off_center":-0.3} t=53.3s fuel=36 decisions=214 avg=244ms climb=0.0m rising=0.0s maxfall=3.2 avgthr=0.40
+{"x":20,"vx":1.7} -> LANDED score=7.6 {"base":9,"fuel_bonus":0.5,"vertical":-1.3,"horizontal":-0.2,"tilt":0,"off_center":-0.4} t=46.0s fuel=45 decisions=187 avg=241ms climb=0.0m rising=0.0s maxfall=3.2 avgthr=0.40
+{"x":43,"vx":-1.2} -> LANDED score=7.6 {"base":9,"fuel_bonus":0.5,"vertical":-1.7,"horizontal":-0.2,"tilt":0,"off_center":0} t=45.1s fuel=46 decisions=183 avg=242ms climb=0.0m rising=0.0s maxfall=3.2 avgthr=0.40
+SUMMARY [primary] tev1:4b physics/criteria:user-v1: TS=1 landed 6/6, avg latency 251 ms, n=1042, input_tokens 1462, agree-with-rules 17%, avg climb 0.0m, avg rising 0.7s, avg score 7.68, avg fuel left 47%
+BATCH18 DONE

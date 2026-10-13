@@ -305,6 +305,38 @@ Results (`results/batch17-policy.log`, tev1:4b, 1×, 6 starts):
 - **Weak spot is still horizontal:** "do not descend while the pad is far to the side" was not honored. An extra `wait_high` question never fired (p < 0.26) and was dropped.
 - Verdict: a working prototype that responds to the policy text (1–2/6 landed vs 0/6 for scene mode), but well behind `multi2` (6/6).
 
+## Experiment: criteria pilot (choice questions with option descriptions, perception prose)
+
+Andrew's playground design, flown as a game mode. `criteria:user-v1` uses the question set in `lander/criteria/user-v1.json`, word for word. It has three `choice` questions: `flight_direction` (right/left/none), `flight_velocity` (fast/slow/very_slow/none) and `downward_thrust_magnitude` (large/medium/small/none). **Each decision is one call** containing all three questions.
+
+- **Perception (code, `lander/criteria.mjs`):** physics → two band sentences, e.g. "The pad is far to the right. The lander is near the ground (low altitude) and is descending fast."
+  - pad distance: directly below < 4 m, very near < 12, near < 35, far < 80, otherwise "way in the distance"
+  - altitude: about to touch down < 4 m, low < 25, medium < 60, otherwise high
+  - descent: very slowly < 1 m/s, slowly < 3, fast < 6, otherwise very fast; or "rising"
+- **Mapping (code, fixed):**
+  - target vx = direction × speed (fast 4, slow 2, very_slow 0.8, none 0 m/s)
+  - tilt toward (target − actual vx) when the gap is > 0.4 m/s; upright below 4 m
+  - throttle = expected value of the thrust-choice probabilities over none 0 / small 0.3 / medium 0.55 / large 1
+- **To change behavior, edit or add a JSON file in `lander/criteria/`.** No code change is needed. Each file appears as `criteria:<name>` in the game and the playground; the playground also has the user's examples.
+
+**Probe** (`node lander/tools/criteriaprobe.mjs`, `results/batch18-criteria.log`), sentences only:
+
+| model | direction (9) | velocity (9) | thrust (20) | median ms |
+|---|---|---|---|---|
+| nimble:9b | 9/9 | 9/9 | 17/20 | 172 |
+| tev1:4b | 9/9 | 6/9 (says "slow" for very near / directly below) | 17/20 | 127 |
+
+Thrust misses: "descending fast" at high or medium altitude gets **large** (I expected small/medium; arguably safe). "About to touch down, descending slowly" gets small (I expected medium). "Rising" is always `none` (0.33–0.95; the criterion is "not descending"). `small` never came back when `large` was needed. With a drift sentence added, tev1:4b's direction follows the drift instead of the pad, so v1 leaves drift to the code (it compares target vx with actual vx). No extra questions were needed.
+
+**Flown** (1×, 6 starts each, one call per decision):
+
+| model | landed | avg score | fuel left | ms/decision | max fall | failure modes |
+|---|---|---|---|---|---|---|
+| nimble:9b | **6/6** | 6.98 | 45% | 310 | ~3.3 m/s | none |
+| tev1:4b | **6/6** | 7.68 | 47% | 251 | ~3.3 m/s (12 on the first run: cold model load) | none |
+
+Verdict: the best result so far. It matches `multi2` (6/6) with **one call of 3 judgment-style choice questions** instead of a chain of numeric fact checks, and it has the highest scores. Code does only perception banding and a fixed control map.
+
 ## System 1 Playground (`/playground`)
 
 A page for sending any `/v1/systemone` request by hand: `http://<host>:8788/playground`. Plain HTML/JS in `lander/playground.html`. Each page links to the other.

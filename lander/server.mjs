@@ -4,6 +4,7 @@ import http from 'node:http'; import fs from 'node:fs'; import path from 'node:p
 import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS, SCENE_VARIANTS, SCENE_T, scenePayload, sceneRead, SCENE_MISSION } from './sim.mjs';
 import { POLICY_Q, POLICY_TABLE, policyMap, policyNames, policyText, shipJSON } from './policy.mjs';
 import { examples } from './examples.mjs';
+import { criteriaNames, criteriaSet, perceive, criteriaMap, CRITERIA_TABLE } from './criteria.mjs';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
 // Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
@@ -77,7 +78,17 @@ async function decidePolicy(s, model, t0, opt) {
   return { thrustBy: 'model', mode: 'physics', variant: 'policy:' + name, policy: name, policyText: policy, model, thrust, pThrust: throttle, throttle: Math.round(throttle * 100) + '%', tilt, action: c, probs: pr, usage, ms: Math.round(performance.now() - t0), answers: ans, table: POLICY_TABLE,
     fellBack, upstream: { url, multi: true, calls, body: calls[0].body, request: { model, state: { policy, ship }, questions: Object.fromEntries(POLICY_Q.map(m => [m.name, m.q])), keep_alive: '2h' }, rawResponse: calls.map(x => x.rawResponse).join('\n'), response: calls.map(x => x.response) }, simState: s, explain: null };
 }
+// Criteria mode: perception prose (bands) + choice questions from lander/criteria/<name>.json, ONE call per decision.
+async function decideCriteria(s, model, t0, opt, name) {
+  const set = criteriaSet(name), state = perceive(s, set), request = { model, state, questions: set.questions, keep_alive: '2h' }, body = JSON.stringify(request);
+  const P = await post(opt.host, body), r = P.r; if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`);
+  const raw = await r.text(), j = JSON.parse(raw), A = j.answers || {}, M = criteriaMap(A, s), thrust = M.throttle > 0 ? M.throttle : false, c = (thrust ? 'burn_' : 'coast_') + M.tilt;
+  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? (thrust ? 1 : 0) : (thrust ? 0 : 1)) * (t === M.tilt ? 1 : 0)]));
+  return { thrustBy: 'model', mode: 'physics', variant: 'criteria:' + name, scene: true, model, thrust, pThrust: M.throttle, tilt: M.tilt, action: c, ctrl: Object.entries(A).map(([k, a]) => k + '=' + a.choice).join(' '), throttle: Math.round(M.throttle * 100) + '%', throttleP: A.downward_thrust_magnitude?.probabilities, tvx: M.tvx, table: CRITERIA_TABLE,
+    probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0), fellBack: P.fellBack, upstream: { url: P.url, body, request, rawResponse: raw, response: j }, simState: s, explain: null };
+}
 export async function decide(s, opt = {}) {
+  if (String(opt.variant).startsWith('criteria:')) return decideCriteria(s, opt.model || MODEL, performance.now(), opt, opt.variant.slice(9));
   if (opt.variant === 'policy' || String(opt.variant).startsWith('policy:')) return decidePolicy(s, opt.model || MODEL, performance.now(), { ...opt, policy: String(opt.variant).startsWith('policy:') ? opt.variant.slice(7) : opt.policy });
   if (SCENE_VARIANTS.includes(opt.variant) || SCENE_T.includes(opt.variant)) return decideScene(s, opt.model || MODEL, performance.now(), opt);
   const mode = opt.mode === 'hints' ? 'hints' : 'physics', variant = PHYS_VARIANTS[opt.variant] ? opt.variant : DEFAULTS.variant, model = opt.model || MODEL;
@@ -142,7 +153,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const o = await playground(q || {}); res.writeHead(o.status, { 'content-type': 'application/json' }); return res.end(JSON.stringify(o.json)); }
       if (req.url.startsWith('/api/models')) { const k = new URL(req.url, 'http://x').searchParams.get('host'); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(await models(k))); }
       if (req.url === '/api/examples') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(examples())); }
-      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T, ...policyNames().map(n => 'policy:' + n)], personas: Object.keys(PERSONAS), policies: policyNames(), policyTexts: Object.fromEntries(policyNames().map(n => [n, policyText(n)])) })); }
+      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T, ...policyNames().map(n => 'policy:' + n), ...criteriaNames().map(n => 'criteria:' + n)], personas: Object.keys(PERSONAS), policies: policyNames(), policyTexts: Object.fromEntries(policyNames().map(n => [n, policyText(n)])) })); }
       const f = req.url === '/sim.mjs' ? 'sim.mjs' : req.url.split('?')[0].replace(/\/$/, '') === '/playground' ? 'playground.html' : 'index.html';
       res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
       res.end(fs.readFileSync(path.join(DIR, f)));

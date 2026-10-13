@@ -1,5 +1,6 @@
 // Playground examples, built from the game's real payload builders (sim.mjs, policy.mjs) at a fixed sample state.
 import { newState, MULTI, MULTI2, payloadFor, PHYS_VARIANTS, scenePayload, SCENE_T, SCENE_VARIANTS } from './sim.mjs';
+import { criteriaNames, criteriaSet, perceive, padSentence, altSentence } from './criteria.mjs';
 import { POLICY_Q, policyNames, policyText, shipJSON } from './policy.mjs';
 const S = () => newState({ x: 60, y: 80, vx: 1.2, vy: -4.5, fuel: 72 });
 export function examples() {
@@ -12,6 +13,10 @@ export function examples() {
   for (const v of Object.keys(PHYS_VARIANTS)) if (!['multi', 'multi2', 'multi2p', 'rival'].includes(v)) { try { const p = payloadFor(s, 'physics', v); add('physics', v, p.state, p.questions); } catch {} }
   for (const v of [...SCENE_VARIANTS, ...SCENE_T]) { try { const p = scenePayload(s, v, [], false, /s[45]t/.test(v) ? { throttle: 'off', tilt: 'center' } : null); add('scene', v.replace('scene_', ''), p.state, p.questions, /j/.test(v) ? 'joystick wording' : ''); } catch {} }
   for (const n of policyNames()) for (const m of POLICY_Q) add('policy:' + n, m.name, { policy: policyText(n), ship: shipJSON(s) }, { q: m.q });
+  for (const n of criteriaNames()) { const c = criteriaSet(n); add('criteria:' + n, 'game state (perception prose)', perceive(s, c), c.questions, c.about || ''); }
+  { const u = criteriaSet('user-v1').questions, hor = { flight_direction: u.flight_direction, flight_velocity: u.flight_velocity }, thr = { downward_thrust_magnitude: u.downward_thrust_magnitude };
+    add('criteria:user-v1', 'pad way in the distance (user ex. 1)', 'The pad is way in the distance to the left.', hor);
+    for (const t of ['The lander is near the ground (low altitude) and is descending slowly.', 'The lander is near the ground (low altitude) and is descending fast.', 'The lander is about to touch down and is descending very slowly.']) add('criteria:user-v1', t.replace('The lander is ', ''), t, thr); }
   add('docs', 'ticket triage', 'Subject: Checkout broken. Body: Since this morning every customer gets a 500 error when paying. We are losing sales.', {
     team: { type: 'choice', instructions: 'Which team should handle this ticket?', criteria: { billing: 'payments, invoices, refunds', engineering: 'bugs, outages, errors', sales: 'pricing, new accounts' } },
     urgent: { type: 'noul', instructions: 'Is this ticket urgent?', criteria: { true: 'urgent: business impact now', false: 'can wait' } },
