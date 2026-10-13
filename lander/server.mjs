@@ -3,6 +3,7 @@ import { hostTable, send } from './providers/index.mjs';
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS, SCENE_VARIANTS, SCENE_T, scenePayload, sceneRead, SCENE_MISSION } from './sim.mjs';
 import { POLICY_Q, POLICY_TABLE, policyMap, policyNames, policyText, shipJSON } from './policy.mjs';
+import { examples } from './examples.mjs';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
 // Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
@@ -98,6 +99,35 @@ export async function decide(s, opt = {}) {
   return { thrustBy: mode === 'physics' && isHybrid(variant) ? 'code (descent rule)' : 'model', mode, variant, model, thrust, pThrust, tilt, action: c, probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0),
     fellBack: P.fellBack, upstream: { url: P.url, body, request, rawResponse: raw, response: j }, simState: s, explain: mode === 'hints' ? explain(s) : null };
 }
+// ---- Playground proxy: validate a /v1/systemone body, forward to the chosen host, return timing + raw text ----
+export function validateBody(b) {
+  const E = [];
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return ['body must be a JSON object'];
+  if (typeof b.model !== 'string' || !/^[\w.:/-]{1,100}$/.test(b.model)) E.push('model: required string (letters, digits, . : / - _)');
+  if (!(typeof b.state === 'string' || (b.state && typeof b.state === 'object'))) E.push('state: required (JSON object or prose string)');
+  if (!b.questions || typeof b.questions !== 'object' || Array.isArray(b.questions) || !Object.keys(b.questions).length) E.push('questions: required non-empty object');
+  else for (const [k, q] of Object.entries(b.questions)) {
+    if (!/^[\w-]{1,64}$/.test(k)) E.push(`questions key "${k}": letters, digits, _ or -`);
+    if (!q || !['noul', 'choice', 'score'].includes(q.type)) { E.push(`questions.${k}.type must be noul, choice or score`); continue; }
+    if (typeof q.instructions !== 'string' || !q.instructions.trim()) E.push(`questions.${k}.instructions: required string`);
+    if (q.type === 'choice' && (!q.criteria || typeof q.criteria !== 'object' || Array.isArray(q.criteria) || Object.keys(q.criteria).length < 2)) E.push(`questions.${k}.criteria: choice needs an object with 2+ options`);
+    if (q.type === 'score' && (!Array.isArray(q.criteria) || q.criteria.length < 2)) E.push(`questions.${k}.criteria: score needs an array of 2+ level descriptions`);
+    if (q.type === 'noul' && q.criteria != null && (typeof q.criteria !== 'object' || Array.isArray(q.criteria))) E.push(`questions.${k}.criteria: noul criteria must be {true, false}`);
+  }
+  if (b.keep_alive != null && !(typeof b.keep_alive === 'string' && /^-?\d+(\.\d+)?(ms|s|m|h)?$/.test(b.keep_alive)) && typeof b.keep_alive !== 'number') E.push('keep_alive: e.g. "30m", "2h", "-1"');
+  return E;
+}
+async function playground(q) {
+  const key = hk(q.host), h = HT[key], b = q.body, errs = validateBody(b);
+  if (errs.length) return { status: 400, json: { error: 'invalid request', details: errs } };
+  const clean = { model: b.model, state: b.state, questions: b.questions, ...(b.keep_alive != null ? { keep_alive: b.keep_alive } : {}) }, body = JSON.stringify(clean), t0 = performance.now();
+  try { const { r, sent } = await send(h, body, AbortSignal.timeout(60000)), raw = await r.text(), ms = Math.round(performance.now() - t0); let j = null; try { j = JSON.parse(raw); } catch {}
+    return { status: 200, json: { host: key, url: h.url, upstreamStatus: r.status, ms, request: clean, sent: sent !== body ? JSON.parse(sent) : undefined, raw, response: j } };
+  } catch (e) { return { status: 502, json: { error: 'upstream failed', details: [String(e.cause?.code || e.message)], host: key, url: h.url, ms: Math.round(performance.now() - t0) } }; }
+}
+async function models(hostKey) { const h = HT[hk(hostKey)]; if (h.kind !== 'ollama') return { models: [], note: 'model list only for Ollama hosts' };
+  const base = h.url.replace(/\/v1\/systemone$/, ''); const r = await fetch(base + '/api/tags', { signal: AbortSignal.timeout(5000) }); const j = await r.json();
+  return { host: hk(hostKey), base, models: (j.models || []).map(m => ({ name: m.name, size: m.size, params: m.details?.parameter_size, quant: m.details?.quantization_level })) }; }
 if (import.meta.url === `file://${process.argv[1]}`) {
   http.createServer(async (req, res) => {
     try {
@@ -106,8 +136,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const q = JSON.parse(b), d = q.sim ? await decide(q.sim, q) : await decide(q);
         res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(d));
       }
+      if (req.method === 'POST' && req.url === '/api/systemone') {
+        let b = ''; for await (const c of req) { b += c; if (b.length > 256000) { res.writeHead(413); return res.end('{"error":"body too large"}'); } }
+        let q; try { q = JSON.parse(b); } catch { res.writeHead(400, { 'content-type': 'application/json' }); return res.end('{"error":"invalid JSON"}'); }
+        const o = await playground(q || {}); res.writeHead(o.status, { 'content-type': 'application/json' }); return res.end(JSON.stringify(o.json)); }
+      if (req.url.startsWith('/api/models')) { const k = new URL(req.url, 'http://x').searchParams.get('host'); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(await models(k))); }
+      if (req.url === '/api/examples') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(examples())); }
       if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T, ...policyNames().map(n => 'policy:' + n)], personas: Object.keys(PERSONAS), policies: policyNames(), policyTexts: Object.fromEntries(policyNames().map(n => [n, policyText(n)])) })); }
-      const f = req.url === '/sim.mjs' ? 'sim.mjs' : 'index.html';
+      const f = req.url === '/sim.mjs' ? 'sim.mjs' : req.url.split('?')[0].replace(/\/$/, '') === '/playground' ? 'playground.html' : 'index.html';
       res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
       res.end(fs.readFileSync(path.join(DIR, f)));
     } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: String(e) })); }

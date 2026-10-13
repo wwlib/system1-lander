@@ -305,6 +305,19 @@ Results (`results/batch17-policy.log`, tev1:4b, 1×, 6 starts):
 - **Weak spot is still horizontal:** "do not descend while the pad is far to the side" was not honored. An extra `wait_high` question never fired (p < 0.26) and was dropped.
 - Verdict: a working prototype that responds to the policy text (1–2/6 landed vs 0/6 for scene mode), but well behind `multi2` (6/6).
 
+## System 1 Playground (`/playground`)
+
+A page for sending any `/v1/systemone` request by hand: `http://<host>:8788/playground`. Plain HTML/JS in `lander/playground.html`. Each page links to the other.
+
+- **Host and model:** pick the host (primary NVIDIA or the Mac fallback, from `.env`). The model list comes from that host's `/api/tags`.
+- **Editing:** the state can be JSON or prose. The questions object (`noul` / `choice` / `score`) is edited as JSON. The `keep_alive` field is editable.
+- **Send:** sends once, or **N runs** with a latency min/median/max and the mean ± sd and answer counts for each question. **Compare** sends the same body to model B side by side.
+- **Output:** probability bars for noul/choice, score with its level probabilities and confidence, latency (server→model and round trip), tokens in/out, and the raw request and raw response.
+- **Examples** (`GET /api/examples`, built in `lander/examples.mjs`): built with the game's own payload builders at a sample state. They cover hello.mjs, every multi/multi2 fact question, the other physics variants, all scene variants (s1–s5, including the joystick ones), and policy `careful` / `fuel-miser` / `aggressive` (each question with the policy text). There are also two general (non-game) examples: ticket triage (choice + noul + score) and a tool-call safety check.
+- **Capture from game:** the game's System 1 panel has **open latest call in playground**. It opens the exact body of the latest call; for multi/policy modes that is the first sub-call.
+- **Proxy:** `POST /api/systemone {host, body}`. The server checks the body (model name, state, question types and criteria shape, keep_alive, 256 KB limit) and returns 400 with the details if it is invalid. Otherwise it forwards to the host through the provider adapter, so the browser has no CORS issue. `GET /api/models?host=` lists models.
+- On a 12 GB GPU, switching between nimble:9b and tev1:4b causes a cold load of ~6–15 s. Warm calls take ~0.4–0.6 s.
+
 ## Limitations
 
 - In the flying variants (`multi`, `multi2`) the piloting logic is in the mapping table and the choice of facts; the model answers facts. Plain code with the same rules would fly better. Scene mode, where the model decides, does not land yet (see the experiment above).

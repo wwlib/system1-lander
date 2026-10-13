@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8"><title>System 1 Playground</title>
+<style>
+body{background:#111;color:#ddd;font:13px monospace;margin:0;padding:8px}a{color:#9cf}h1{font-size:16px;margin:0 0 6px;color:#ff0}h3{font-size:12px;color:#ff0;margin:8px 0 3px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0}select,input,button,textarea{background:#222;color:#eee;border:1px solid #444;font:12px monospace;padding:3px}
+button{cursor:pointer}button.go{background:#264;border-color:#4a6}textarea{width:100%;box-sizing:border-box}#cols{display:flex;gap:10px}#cols>div{flex:1;min-width:0}
+pre{background:#000;padding:4px;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow:auto;margin:2px 0}.err{color:#f66}.meta{color:#999}
+.bar{display:flex;align-items:center;gap:6px;margin:1px 0}.bar i{display:block;height:10px;background:#4a6}.bar span{min-width:140px}.out{border:1px solid #333;padding:6px;flex:1;min-width:0}
+.top{color:#ff0}table{border-collapse:collapse}td{padding:1px 6px;border-bottom:1px solid #222}
+</style></head><body>
+<h1>System 1 Playground <span class="meta">· <a href="/">← lander game</a> · POST /v1/systemone via server proxy /api/systemone</span></h1>
+<div class="row">example <select id="ex" style="max-width:420px"></select> <span id="exnote" class="meta"></span></div>
+<div class="row">host <select id="host"></select> model A <select id="mA"></select>
+ <label><input type="checkbox" id="cmp"> compare with model B</label> <select id="mB"></select>
+ keep_alive <input id="ka" value="30m" size="5"> runs <input id="n" type="number" value="1" min="1" max="50" style="width:45px">
+ <button class="go" id="send">Send (Ctrl+Enter)</button> <span id="status" class="meta"></span></div>
+<div id="cols"><div><h3>state <label class="meta"><input type="radio" name="sm" value="json" checked> JSON</label> <label class="meta"><input type="radio" name="sm" value="text"> prose text</label></h3>
+<textarea id="state" rows="14" spellcheck="false"></textarea></div>
+<div><h3>questions (object: key → {type: noul|choice|score, instructions, criteria})</h3><textarea id="qs" rows="14" spellcheck="false"></textarea>
+<div class="meta">noul criteria {true,false} · choice criteria {option: description} · score criteria [level0, level1, …]</div></div></div>
+<div id="err" class="err"></div>
+<div class="row" id="outs" style="align-items:flex-start"></div>
+<script>
+const $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+let EX = [], cfg = {};
+const smode = () => document.querySelector('input[name=sm]:checked').value;
+function setState(st) { const t = typeof st === 'string'; document.querySelector(`input[name=sm][value=${t ? 'text' : 'json'}]`).checked = true; $('state').value = t ? st : JSON.stringify(st, null, 2); }
+function load(e) { setState(e.state); $('qs').value = JSON.stringify(e.questions, null, 2); $('exnote').textContent = e.note || ''; }
+async function loadModels() { const j = await (await fetch('/api/models?host=' + encodeURIComponent($('host').value))).json().catch(() => ({ models: [] }));
+  const opts = (j.models || []).map(m => `<option value="${esc(m.name)}">${esc(m.name)} ${m.params ? '(' + esc(m.params) + ')' : ''}</option>`).join('') || `<option>${esc(cfg.model || 'tev1:4b')}</option>`;
+  for (const id of ['mA', 'mB']) { const keep = $(id).value || localStorage.getItem('pg.' + id); $(id).innerHTML = opts; if ([...$(id).options].some(o => o.value === keep)) $(id).value = keep; }
+  if (!localStorage.getItem('pg.mA') && [...$('mA').options].some(o => o.value === 'tev1:4b')) $('mA').value = 'tev1:4b';
+  if (!localStorage.getItem('pg.mB') && [...$('mB').options].some(o => o.value === 'nimble:9b')) $('mB').value = 'nimble:9b'; }
+function build(model) { let state, questions; $('err').textContent = '';
+  if (smode() === 'json') { try { state = JSON.parse($('state').value); } catch (e) { throw 'state is not valid JSON: ' + e.message + ' (switch to "prose text" to send a string)'; } } else state = $('state').value;
+  try { questions = JSON.parse($('qs').value); } catch (e) { throw 'questions is not valid JSON: ' + e.message; }
+  const ka = $('ka').value.trim(); return { model, state, questions, ...(ka ? { keep_alive: ka } : {}) }; }
+function friendly(resp) { const A = resp?.answers || {}; return Object.entries(A).map(([k, a]) => {
+  const bar = (lab, p, top) => `<div class="bar"><span class="${top ? 'top' : ''}">${esc(lab)}</span><i style="width:${Math.round(p * 200)}px"></i>${(+p).toFixed(3)}</div>`;
+  if (a.type === 'noul' || 'noul' in a) return `<h3>${esc(k)} · noul</h3>` + bar('true (yes)', a.noul, a.noul > .5) + bar('false (no)', 1 - a.noul, a.noul <= .5);
+  if (a.type === 'score') return `<h3>${esc(k)} · score <b class="top">${(+a.score).toFixed(2)}</b>${a.confidence != null ? ` · confidence ${(+a.confidence).toFixed(2)}` : ''}</h3>` + Object.entries(a.probabilities || {}).map(([i, p]) => bar(i + ': ' + (a.legend?.[i] ?? ''), p, Math.round(a.score) == i)).join('');
+  return `<h3>${esc(k)} · choice → <b class="top">${esc(a.choice)}</b></h3>` + Object.entries(a.probabilities || {}).sort((x, y) => y[1] - x[1]).map(([c, p]) => bar(c, p, c === a.choice)).join(''); }).join(''); }
+function summary(runs) { if (runs.length < 2) return ''; const ms = runs.map(r => r.ms), s = [...ms].sort((a, b) => a - b), keys = Object.keys(runs[0].response?.answers || {});
+  const val = a => a ? ('noul' in a ? a.noul : a.type === 'score' ? a.score : a.probabilities?.[a.choice]) : NaN, lab = a => a ? ('noul' in a ? (a.noul > .5 ? 'true' : 'false') : a.type === 'score' ? Math.round(a.score) : a.choice) : '?';
+  return `<h3>${runs.length} runs · latency ms min ${s[0]} · median ${s[s.length >> 1]} · max ${s[s.length - 1]} · all: ${ms.join(', ')}</h3><table>` + keys.map(k => { const v = runs.map(r => val(r.response?.answers?.[k])), m = v.reduce((a, b) => a + b, 0) / v.length, sd = Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / v.length), cnt = {};
+    runs.forEach(r => { const l = lab(r.response?.answers?.[k]); cnt[l] = (cnt[l] || 0) + 1; });
+    return `<tr><td>${esc(k)}</td><td>mean ${m.toFixed(3)} ± ${sd.toFixed(3)}</td><td>${esc(Object.entries(cnt).map(([a, b]) => a + '×' + b).join(' '))}</td></tr>`; }).join('') + '</table>'; }
+async function runModel(model, box) { const N = Math.max(1, Math.min(50, +$('n').value || 1)), runs = []; let body;
+  try { body = build(model); } catch (e) { $('err').textContent = e; return; }
+  for (let i = 0; i < N; i++) { box.querySelector('.st').textContent = `run ${i + 1}/${N}…`;
+    const t0 = performance.now(), r = await fetch('/api/systemone', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ host: $('host').value, body }) }), j = await r.json(); j.rt = Math.round(performance.now() - t0);
+    if (j.error) { box.innerHTML = `<h3>${esc(model)}</h3><div class="err">${esc(j.error)}<br>${(j.details || []).map(esc).join('<br>')}</div>`; return; }
+    runs.push(j); }
+  const last = runs[runs.length - 1], u = last.response?.usage || {};
+  box.innerHTML = `<h3 style="font-size:14px">${esc(model)} <span class="meta">@ ${esc(last.host)}</span></h3><div class="meta">upstream ${last.upstreamStatus} · <b style="color:#fff">${last.ms} ms</b> (server→model) · ${last.rt} ms round trip · tokens in ${u.input_tokens ?? '?'} / out ${u.output_tokens ?? '?'} · ${esc(last.url)}</div>` +
+    (last.response?.error ? `<div class="err">${esc(last.response.error)}</div>` : friendly(last.response)) + summary(runs) +
+    `<h3>raw request payload (${JSON.stringify(last.request).length} bytes)</h3><pre>${esc(JSON.stringify(last.request, null, 2))}</pre>${last.sent ? `<h3>as sent upstream (provider adapter)</h3><pre>${esc(JSON.stringify(last.sent, null, 2))}</pre>` : ''}<h3>raw response</h3><pre>${esc(last.raw)}</pre>`; }
+async function go() { const ms = [$('mA').value, ...($('cmp').checked ? [$('mB').value] : [])]; $('outs').innerHTML = ms.map(() => `<div class="out"><span class="st meta"></span></div>`).join(''); $('status').textContent = 'sending…';
+  localStorage.setItem('pg.mA', $('mA').value); localStorage.setItem('pg.mB', $('mB').value);
+  const boxes = [...$('outs').children]; await Promise.all(ms.map((m, i) => runModel(m, boxes[i]))); $('status').textContent = 'done'; }
+$('send').onclick = go; document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) go(); });
+$('ex').onchange = () => { const e = EX.find(x => x.id === $('ex').value); if (e) load(e); };
+$('host').onchange = loadModels;
+for (const r of document.querySelectorAll('input[name=sm]')) r.onchange = () => { if (smode() === 'text') { try { const v = JSON.parse($('state').value); if (typeof v === 'string') $('state').value = v; } catch {} } };
+(async () => { cfg = await (await fetch('/config')).json(); $('host').innerHTML = Object.entries(cfg.hosts).map(([k, u]) => `<option value="${k}">${esc(cfg.hostLabels?.[k] || k)} · ${esc(u.replace('/v1/systemone', ''))}</option>`).join(''); $('host').value = cfg.host;
+  EX = await (await fetch('/api/examples')).json(); const groups = [...new Set(EX.map(e => e.group))];
+  $('ex').innerHTML = '<option value="">— pick an example —</option>' + groups.map(g => `<optgroup label="${esc(g)}">${EX.filter(e => e.group === g).map(e => `<option value="${esc(e.id)}">${esc(g)} · ${esc(e.name)}</option>`).join('')}</optgroup>`).join('');
+  const cap = localStorage.getItem('pg.capture');
+  if (cap && location.hash === '#capture') { const c = JSON.parse(cap); setState(c.body.state); $('qs').value = JSON.stringify(c.body.questions, null, 2); if (c.body.keep_alive) $('ka').value = c.body.keep_alive; $('exnote').textContent = 'captured from game: ' + (c.label || ''); if (c.host && cfg.hosts[c.host]) $('host').value = c.host; await loadModels(); if (c.body.model) $('mA').value = c.body.model; }
+  else { await loadModels(); $('ex').value = 'hello:hello.mjs'; load(EX[0]); } })();
+</script></body></html>
