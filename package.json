@@ -2,6 +2,8 @@
   "name": "system1-lander",
   "version": "0.1.0",
   "description": "A lunar lander flown in real time by a small System 1 decision model (Ollama /v1/systemone): the model judges prose, code maps choices to controls.",
+  "author": "Andrew Rapo",
+  "license": "MIT",
   "type": "module",
   "private": true,
   "engines": {

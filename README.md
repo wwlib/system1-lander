@@ -82,4 +82,4 @@ archive/                 earlier experiments (scene/joystick/hints modes, rival 
 
 ## License
 
-Not chosen yet.
+MIT © 2026 Andrew Rapo — see LICENSE
