@@ -1,122 +1,727 @@
+// @ts-check
+// The lander server. It serves the game and the playground, and turns a ship state into controls
+// by asking a System 1 model (POST /v1/systemone) in one of three modes: prose, data or policy.
+//
+// Routes:
+//   POST /decide          { sim, variant?, model?, host? } → controls + the exact upstream calls
+//   POST /api/systemone   playground proxy: { host?, body } → validated, forwarded, timed
+//   GET  /api/models      models on an Ollama host (?host=primary)
+//   GET  /api/examples    playground examples
+//   GET  /config          defaults and the mode list
+//   GET  /playground      playground page; other paths serve the game page
+
 import './env.mjs';
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { hostTable, send } from './providers/index.mjs';
-import { ACTIONS, DATA_Q, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
+import { ACTIONS, DATA_QUESTIONS, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
 import { proseSet, perceive, proseMap, PROSE_TABLE } from './prose.mjs';
-import { POLICY_Q, POLICY_TABLE, policyMap, policyNames, policyText, shipJSON } from './policy.mjs';
+import {
+  POLICY_QUESTIONS,
+  POLICY_TABLE,
+  policyMap,
+  policyNames,
+  policyText,
+  shipJSON,
+} from './policy.mjs';
 import { examples } from './examples.mjs';
-import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-const DIR = path.dirname(fileURLToPath(import.meta.url));
-const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
-// Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
-const HT = hostTable();
-export const HOSTS = Object.fromEntries(Object.entries(HT).map(([k, h]) => [k, h.url]));
-export const HOST_LABELS = Object.fromEntries(Object.entries(HT).map(([k, h]) => [k, h.label]));
-const hk = k => HT[k] ? k : 'primary';
-const DEFAULT_HOST = hk(process.env.PROVIDER || process.env.OLLAMA_HOST_KEY || 'primary');
-// POST to the chosen host; on a network failure fall back to the other Ollama host (if configured). Hosted providers never fall back.
-const downUntil = {};
-async function post(hostKey, body) {
-  if (OLLAMA_FORCE) { const r = await fetch(`${OLLAMA_FORCE}/v1/systemone`, { method: 'POST', headers: { 'content-type': 'application/json' }, body }); return { r, url: `${OLLAMA_FORCE}/v1/systemone`, fellBack: false }; }
-  const key = hk(hostKey || DEFAULT_HOST), h = HT[key], altK = h.kind === 'ollama' ? Object.keys(HT).find(k => k !== key && HT[k].kind === 'ollama') : null, alt = altK && HT[altK];
-  if (alt && downUntil[key] > Date.now()) return { ...(await send(alt, body)), url: alt.url, fellBack: 'host down (retry in <30s)' };
-  try { return { ...(await send(h, body, AbortSignal.timeout(20000))), url: h.url, fellBack: false }; }
-  catch (e) { if (!alt) throw e; downUntil[key] = Date.now() + 30000; return { ...(await send(alt, body)), url: alt.url, fellBack: String(e.cause?.code || e.name) }; }
+
+/** @typedef {import('./sim.mjs').Ship} Ship */
+/** @typedef {import('./sim.mjs').Tilt} Tilt */
+/** @typedef {import('./providers/index.mjs').Host} Host */
+
+/**
+ * Options for a decision. All are optional.
+ * @typedef {{ variant?: string, model?: string, host?: string }} DecideOptions
+ */
+
+/**
+ * One finished upstream call.
+ * @typedef {object} UpstreamCall
+ * @property {string} body       the exact JSON text sent
+ * @property {any} request       the same body as an object
+ * @property {string} raw        the raw response text
+ * @property {any} j             the parsed response
+ * @property {string} url
+ * @property {string | false} fellBack  why the call used the fallback host, or false
+ * @property {number} ms
+ */
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const LISTEN_HOST = process.env.HOST || '0.0.0.0';
+const PORT = Number(process.env.PORT) || 8787;
+const MODEL = process.env.MODEL || 'tev1:4b';
+// Test override (a mock): when set, every call goes to this URL.
+const FORCED_OLLAMA_URL = process.env.OLLAMA;
+
+// Hosts and providers come from the environment (.env); see providers/index.mjs and .env.example.
+const HOST_TABLE = hostTable();
+
+/** @type {Record<string, string>} */
+export const HOSTS = {};
+/** @type {Record<string, string>} */
+export const HOST_LABELS = {};
+for (const [key, host] of Object.entries(HOST_TABLE)) {
+  HOSTS[key] = host.url;
+  HOST_LABELS[key] = host.label;
 }
-// Modes (ids are what /decide, headless VARIANT and .env VARIANT take).
-export const MODES = () => [
-  { id: 'prose', label: 'Prose input (choice questions)' },
-  { id: 'data', label: 'Data input (yes/no fact checks)' },
-  ...policyNames().map(n => ({ id: 'policy:' + n, label: `Policy (plain-English rules): ${n}` })),
-];
-const modeId = v => MODES().some(m => m.id === v) ? v : 'prose';
-export const DEFAULTS = { variant: modeId(process.env.VARIANT), model: MODEL, host: DEFAULT_HOST, hosts: HOSTS, hostLabels: HOST_LABELS, timeScale: +(process.env.TIME_SCALE || 1) };
-const KEEP = '2h';
-const probsFor = (thrust, tilt) => Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b === !!thrust ? 1 : 0) * (t === tilt ? 1 : 0)]));
-async function call(hostKey, request) { const body = JSON.stringify(request), c0 = performance.now(), P = await post(hostKey, body), r = P.r;
-  if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`); const raw = await r.text();
-  return { body, request, raw, j: JSON.parse(raw), url: P.url, fellBack: P.fellBack, ms: Math.round(performance.now() - c0) }; }
-// PROSE: one call; state = perception sentences; questions from lander/modes/prose.json.
-async function decideProse(s, model, t0, opt) {
-  const set = proseSet(), C = await call(opt.host, { model, state: perceive(s, set), questions: set.questions, keep_alive: KEEP }), A = C.j.answers || {}, M = proseMap(A, s), thrust = M.throttle > 0 ? M.throttle : false;
-  return { variant: 'prose', model, thrust, tilt: M.tilt, action: (thrust ? 'burn_' : 'coast_') + M.tilt, throttle: Math.round(M.throttle * 100) + '%', tvx: M.tvx, answers: A, table: PROSE_TABLE,
-    probs: probsFor(thrust, M.tilt), usage: C.j.usage, ms: Math.round(performance.now() - t0), fellBack: C.fellBack, upstream: { url: C.url, body: C.body, request: C.request, rawResponse: C.raw, response: C.j }, simState: s };
-}
-// DATA: a chain of tiny yes/no fact calls (neutral key "q"), later ones skipped when earlier answers decide.
-async function decideData(s, model, t0, opt) {
-  const ans = {}, calls = []; let url, fellBack = false;
-  for (const m of DATA_Q) {
-    if (m.skipIf && m.skipIf(ans)) { calls.push({ name: m.name, skipped: true }); continue; }
-    const C = await call(opt.host, { model, state: m.state(s), questions: { q: m.q }, keep_alive: KEEP }), A = C.j.answers?.q ?? {}; url = C.url; fellBack = fellBack || C.fellBack;
-    const p = m.read ? (A.probabilities?.touching_down ?? (m.read(A) ? 1 : 0)) : A.noul ?? 0; ans[m.name] = m.read ? m.read(A) : p > 0.5; ans[m.name + '_p'] = p;
-    calls.push({ name: m.name, body: C.body, request: C.request, rawResponse: C.raw, response: C.j, p, answer: ans[m.name], usage: C.j.usage, ms: C.ms });
+
+/**
+ * Unknown host keys fall back to 'primary'.
+ * @param {string | undefined | null} hostKey
+ * @returns {string}
+ */
+function knownHostKey(hostKey) {
+  if (hostKey && HOST_TABLE[hostKey]) {
+    return hostKey;
   }
-  const tilt = dataMap(ans), thrust = dataThrust(ans), done = calls.filter(x => !x.skipped);
-  const usage = { input_tokens: done.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: done.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: done.length };
-  return { variant: 'data', model, thrust, tilt, action: (thrust ? 'burn_' : 'coast_') + tilt, answers: ans, table: DATA_TABLE, probs: probsFor(thrust, tilt), usage, ms: Math.round(performance.now() - t0),
-    fellBack, upstream: { url, multi: true, calls, body: done[0].body }, simState: s };
+  return 'primary';
 }
-// POLICY: 4 judgment calls against a plain-English policy file; graded probabilities → throttle/steer.
-async function decidePolicy(s, model, t0, opt, name) {
-  const policy = policyText(name), ship = shipJSON(s), ans = {}, calls = []; let url, fellBack = false;
-  for (const m of POLICY_Q) {
-    const C = await call(opt.host, { model, state: { policy, ship }, questions: { q: m.q }, keep_alive: KEEP }), p = C.j.answers?.q?.noul ?? 0; url = C.url; fellBack = fellBack || C.fellBack;
-    ans[m.name] = p > 0.5; ans[m.name + '_p'] = Math.round(p * 1000) / 1000;
-    calls.push({ name: m.name, body: C.body, request: C.request, rawResponse: C.raw, response: C.j, p, answer: ans[m.name], usage: C.j.usage, ms: C.ms });
+
+const DEFAULT_HOST = knownHostKey(
+  process.env.PROVIDER || process.env.OLLAMA_HOST_KEY || 'primary',
+);
+
+// ---- Sending, with fallback between Ollama hosts ----
+
+/** When a host failed, skip it until this time (ms since epoch). */
+/** @type {Record<string, number>} */
+const hostDownUntil = {};
+
+/**
+ * The other Ollama host to fall back to, if there is one. Hosted providers never fall back.
+ * @param {string} hostKey
+ * @returns {Host | null}
+ */
+function fallbackHostFor(hostKey) {
+  if (HOST_TABLE[hostKey].kind !== 'ollama') {
+    return null;
   }
-  const { throttle, tilt } = policyMap(ans, s), thrust = throttle > 0 ? throttle : false;
-  const usage = { input_tokens: calls.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: calls.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: calls.length };
-  return { variant: 'policy:' + name, policy: name, policyText: policy, model, thrust, tilt, action: (thrust ? 'burn_' : 'coast_') + tilt, throttle: Math.round(throttle * 100) + '%', answers: ans, table: POLICY_TABLE,
-    probs: probsFor(thrust, tilt), usage, ms: Math.round(performance.now() - t0), fellBack, upstream: { url, multi: true, calls, body: calls[0].body }, simState: s };
+  const otherKey = Object.keys(HOST_TABLE).find(
+    (key) => key !== hostKey && HOST_TABLE[key].kind === 'ollama',
+  );
+  return otherKey ? HOST_TABLE[otherKey] : null;
 }
-export async function decide(s, opt = {}) {
-  const v = modeId(opt.variant || DEFAULTS.variant), model = opt.model || MODEL, t0 = performance.now();
-  if (v === 'data') return decideData(s, model, t0, opt);
-  if (v.startsWith('policy:')) return decidePolicy(s, model, t0, opt, v.slice(7));
-  return decideProse(s, model, t0, opt);
-}
-// ---- Playground proxy: validate a /v1/systemone body, forward to the chosen host, return timing + raw text ----
-export function validateBody(b) {
-  const E = [];
-  if (!b || typeof b !== 'object' || Array.isArray(b)) return ['body must be a JSON object'];
-  if (typeof b.model !== 'string' || !/^[\w.:/-]{1,100}$/.test(b.model)) E.push('model: required string (letters, digits, . : / - _)');
-  if (!(typeof b.state === 'string' || (b.state && typeof b.state === 'object'))) E.push('state: required (JSON object or prose string)');
-  if (!b.questions || typeof b.questions !== 'object' || Array.isArray(b.questions) || !Object.keys(b.questions).length) E.push('questions: required non-empty object');
-  else for (const [k, q] of Object.entries(b.questions)) {
-    if (!/^[\w-]{1,64}$/.test(k)) E.push(`questions key "${k}": letters, digits, _ or -`);
-    if (!q || !['noul', 'choice', 'score'].includes(q.type)) { E.push(`questions.${k}.type must be noul, choice or score`); continue; }
-    if (typeof q.instructions !== 'string' || !q.instructions.trim()) E.push(`questions.${k}.instructions: required string`);
-    if (q.type === 'choice' && (!q.criteria || typeof q.criteria !== 'object' || Array.isArray(q.criteria) || Object.keys(q.criteria).length < 2)) E.push(`questions.${k}.criteria: choice needs an object with 2+ options`);
-    if (q.type === 'score' && (!Array.isArray(q.criteria) || q.criteria.length < 2)) E.push(`questions.${k}.criteria: score needs an array of 2+ level descriptions`);
-    if (q.type === 'noul' && q.criteria != null && (typeof q.criteria !== 'object' || Array.isArray(q.criteria))) E.push(`questions.${k}.criteria: noul criteria must be {true, false}`);
+
+/**
+ * POST a body to the chosen host. On a network failure, fall back to the other Ollama host and
+ * mark the failed host down for 30 s.
+ * @param {string | undefined} hostKey
+ * @param {string} bodyText
+ * @returns {Promise<{ r: Response, sent?: string, url: string, fellBack: string | false }>}
+ */
+async function post(hostKey, bodyText) {
+  if (FORCED_OLLAMA_URL) {
+    const url = `${FORCED_OLLAMA_URL}/v1/systemone`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: bodyText,
+    });
+    return { r: response, url, fellBack: false };
   }
-  if (b.keep_alive != null && !(typeof b.keep_alive === 'string' && /^-?\d+(\.\d+)?(ms|s|m|h)?$/.test(b.keep_alive)) && typeof b.keep_alive !== 'number') E.push('keep_alive: e.g. "30m", "2h", "-1"');
-  return E;
+
+  const key = knownHostKey(hostKey || DEFAULT_HOST);
+  const host = HOST_TABLE[key];
+  const fallbackHost = fallbackHostFor(key);
+
+  if (fallbackHost && hostDownUntil[key] > Date.now()) {
+    const sent = await send(fallbackHost, bodyText);
+    return { ...sent, url: fallbackHost.url, fellBack: 'host down (retry in <30s)' };
+  }
+  try {
+    const sent = await send(host, bodyText, AbortSignal.timeout(20000));
+    return { ...sent, url: host.url, fellBack: false };
+  } catch (error) {
+    if (!fallbackHost) {
+      throw error;
+    }
+    hostDownUntil[key] = Date.now() + 30000;
+    const sent = await send(fallbackHost, bodyText);
+    const reason = /** @type {any} */ (error);
+    return { ...sent, url: fallbackHost.url, fellBack: String(reason.cause?.code || reason.name) };
+  }
 }
-async function playground(q) {
-  const key = hk(q.host), h = HT[key], b = q.body, errs = validateBody(b);
-  if (errs.length) return { status: 400, json: { error: 'invalid request', details: errs } };
-  const clean = { model: b.model, state: b.state, questions: b.questions, ...(b.keep_alive != null ? { keep_alive: b.keep_alive } : {}) }, body = JSON.stringify(clean), t0 = performance.now();
-  try { const { r, sent } = await send(h, body, AbortSignal.timeout(60000)), raw = await r.text(), ms = Math.round(performance.now() - t0); let j = null; try { j = JSON.parse(raw); } catch {}
-    return { status: 200, json: { host: key, url: h.url, upstreamStatus: r.status, ms, request: clean, sent: sent !== body ? JSON.parse(sent) : undefined, raw, response: j } };
-  } catch (e) { return { status: 502, json: { error: 'upstream failed', details: [String(e.cause?.code || e.message)], host: key, url: h.url, ms: Math.round(performance.now() - t0) } }; }
+
+// ---- Modes ----
+
+/**
+ * The modes. Their ids are what /decide, headless VARIANT and .env VARIANT accept.
+ * @returns {{ id: string, label: string }[]}
+ */
+export function MODES() {
+  const policyModes = policyNames().map((name) => ({
+    id: 'policy:' + name,
+    label: `Policy (plain-English rules): ${name}`,
+  }));
+  return [
+    { id: 'prose', label: 'Prose input (choice questions)' },
+    { id: 'data', label: 'Data input (yes/no fact checks)' },
+    ...policyModes,
+  ];
 }
-async function models(hostKey) { const h = HT[hk(hostKey)]; if (h.kind !== 'ollama') return { models: [], note: 'model list only for Ollama hosts' };
-  const base = h.url.replace(/\/v1\/systemone$/, ''); const r = await fetch(base + '/api/tags', { signal: AbortSignal.timeout(5000) }); const j = await r.json();
-  return { host: hk(hostKey), base, models: (j.models || []).map(m => ({ name: m.name, size: m.size, params: m.details?.parameter_size, quant: m.details?.quantization_level })) }; }
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const json = (res, code, o) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
-  const readBody = async (req, max = 256000) => { let b = ''; for await (const c of req) { b += c; if (b.length > max) throw Object.assign(new Error('body too large'), { code: 413 }); } return b; };
-  http.createServer(async (req, res) => {
+
+/**
+ * Unknown modes fall back to 'prose'.
+ * @param {string | undefined} variant
+ * @returns {string}
+ */
+function knownModeId(variant) {
+  const isKnown = MODES().some((mode) => mode.id === variant);
+  return isKnown ? /** @type {string} */ (variant) : 'prose';
+}
+
+export const DEFAULTS = {
+  variant: knownModeId(process.env.VARIANT),
+  model: MODEL,
+  host: DEFAULT_HOST,
+  hosts: HOSTS,
+  hostLabels: HOST_LABELS,
+  timeScale: Number(process.env.TIME_SCALE || 1),
+};
+
+/** How long Ollama keeps the model loaded between calls. */
+const KEEP_ALIVE = '2h';
+
+/**
+ * A one-hot probability table over ACTIONS for the chosen controls (for the UI).
+ * @param {number | boolean} thrust
+ * @param {Tilt} tilt
+ * @returns {Record<string, number>}
+ */
+function probsFor(thrust, tilt) {
+  /** @type {Record<string, number>} */
+  const probabilities = {};
+  for (const [actionName, [burns, actionTilt]] of Object.entries(ACTIONS)) {
+    const matches = burns === !!thrust && actionTilt === tilt;
+    probabilities[actionName] = matches ? 1 : 0;
+  }
+  return probabilities;
+}
+
+/**
+ * Send one /v1/systemone request and parse the reply.
+ * @param {string | undefined} hostKey
+ * @param {any} request
+ * @returns {Promise<UpstreamCall>}
+ */
+async function call(hostKey, request) {
+  const body = JSON.stringify(request);
+  const startedAt = performance.now();
+  const posted = await post(hostKey, body);
+  const response = posted.r;
+  if (!response.ok) {
+    throw new Error(`upstream ${response.status}: ${await response.text()}`);
+  }
+  const raw = await response.text();
+  return {
+    body,
+    request,
+    raw,
+    j: JSON.parse(raw),
+    url: posted.url,
+    fellBack: posted.fellBack,
+    ms: Math.round(performance.now() - startedAt),
+  };
+}
+
+/** @param {number | boolean} thrust @param {Tilt} tilt */
+function actionName(thrust, tilt) {
+  return (thrust ? 'burn_' : 'coast_') + tilt;
+}
+
+/** @param {number} throttle */
+function throttlePercent(throttle) {
+  return Math.round(throttle * 100) + '%';
+}
+
+/**
+ * Sum token usage over several calls.
+ * @param {{ usage?: any }[]} calls
+ */
+function totalUsage(calls) {
+  let inputTokens = 0;
+  let outputTokens = 0;
+  for (const finishedCall of calls) {
+    inputTokens = inputTokens + (finishedCall.usage?.input_tokens || 0);
+    outputTokens = outputTokens + (finishedCall.usage?.output_tokens || 0);
+  }
+  return { input_tokens: inputTokens, output_tokens: outputTokens, calls: calls.length };
+}
+
+/**
+ * The per-call record shown in the UI for multi-call modes.
+ * @param {string} name @param {UpstreamCall} upstream @param {number} probability @param {boolean} answer
+ */
+function callRecord(name, upstream, probability, answer) {
+  return {
+    name,
+    body: upstream.body,
+    request: upstream.request,
+    rawResponse: upstream.raw,
+    response: upstream.j,
+    p: probability,
+    answer,
+    usage: upstream.j.usage,
+    ms: upstream.ms,
+  };
+}
+
+/**
+ * PROSE: one call. state = perception sentences; questions come from lander/modes/prose.json.
+ * @param {Ship} ship @param {string} model @param {number} startedAt @param {DecideOptions} options
+ */
+async function decideProse(ship, model, startedAt, options) {
+  const questionSet = proseSet();
+  const request = {
+    model,
+    state: perceive(ship, questionSet),
+    questions: questionSet.questions,
+    keep_alive: KEEP_ALIVE,
+  };
+  const upstream = await call(options.host, request);
+  const answers = upstream.j.answers || {};
+  const controls = proseMap(answers, ship);
+  const thrust = controls.throttle > 0 ? controls.throttle : false;
+  return {
+    variant: 'prose',
+    model,
+    thrust,
+    tilt: controls.tilt,
+    action: actionName(thrust, controls.tilt),
+    throttle: throttlePercent(controls.throttle),
+    tvx: controls.tvx,
+    answers,
+    table: PROSE_TABLE,
+    probs: probsFor(thrust, controls.tilt),
+    usage: upstream.j.usage,
+    ms: Math.round(performance.now() - startedAt),
+    fellBack: upstream.fellBack,
+    upstream: {
+      url: upstream.url,
+      body: upstream.body,
+      request: upstream.request,
+      rawResponse: upstream.raw,
+      response: upstream.j,
+    },
+    simState: ship,
+  };
+}
+
+/**
+ * DATA: a chain of small yes/no fact calls (neutral key "q"). Later calls are skipped when earlier
+ * answers already decide the controls.
+ * @param {Ship} ship @param {string} model @param {number} startedAt @param {DecideOptions} options
+ */
+async function decideData(ship, model, startedAt, options) {
+  /** @type {Record<string, any>} */
+  const answers = {};
+  /** @type {any[]} */
+  const calls = [];
+  /** @type {string | undefined} */
+  let url;
+  /** @type {string | false} */
+  let fellBack = false;
+
+  for (const question of DATA_QUESTIONS) {
+    if (question.skipIf && question.skipIf(answers)) {
+      calls.push({ name: question.name, skipped: true });
+      continue;
+    }
+    const request = {
+      model,
+      state: question.state(ship),
+      questions: { q: question.q },
+      keep_alive: KEEP_ALIVE,
+    };
+    const upstream = await call(options.host, request);
+    const answer = upstream.j.answers?.q ?? {};
+    url = upstream.url;
+    fellBack = fellBack || upstream.fellBack;
+
+    // Choice questions have a `read` function; noul questions use the probability directly.
+    let probability;
+    if (question.read) {
+      probability = answer.probabilities?.touching_down ?? (question.read(answer) ? 1 : 0);
+      answers[question.name] = question.read(answer);
+    } else {
+      probability = answer.noul ?? 0;
+      answers[question.name] = probability > 0.5;
+    }
+    answers[question.name + '_p'] = probability;
+    calls.push(callRecord(question.name, upstream, probability, answers[question.name]));
+  }
+
+  const tilt = dataMap(answers);
+  const thrust = dataThrust(answers);
+  const madeCalls = calls.filter((record) => !record.skipped);
+  return {
+    variant: 'data',
+    model,
+    thrust,
+    tilt,
+    action: actionName(thrust, tilt),
+    answers,
+    table: DATA_TABLE,
+    probs: probsFor(thrust, tilt),
+    usage: totalUsage(madeCalls),
+    ms: Math.round(performance.now() - startedAt),
+    fellBack,
+    upstream: { url, multi: true, calls, body: madeCalls[0].body },
+    simState: ship,
+  };
+}
+
+/**
+ * POLICY: 4 judgment calls against a plain-English policy file. The graded probabilities become
+ * throttle and steering.
+ * @param {Ship} ship @param {string} model @param {number} startedAt @param {DecideOptions} options
+ * @param {string} policyName
+ */
+async function decidePolicy(ship, model, startedAt, options, policyName) {
+  const policy = policyText(policyName);
+  const shipDescription = shipJSON(ship);
+  /** @type {Record<string, any>} */
+  const answers = {};
+  /** @type {any[]} */
+  const calls = [];
+  /** @type {string | undefined} */
+  let url;
+  /** @type {string | false} */
+  let fellBack = false;
+
+  for (const question of POLICY_QUESTIONS) {
+    const request = {
+      model,
+      state: { policy, ship: shipDescription },
+      questions: { q: question.q },
+      keep_alive: KEEP_ALIVE,
+    };
+    const upstream = await call(options.host, request);
+    const probability = upstream.j.answers?.q?.noul ?? 0;
+    url = upstream.url;
+    fellBack = fellBack || upstream.fellBack;
+    answers[question.name] = probability > 0.5;
+    answers[question.name + '_p'] = Math.round(probability * 1000) / 1000;
+    calls.push(callRecord(question.name, upstream, probability, answers[question.name]));
+  }
+
+  const { throttle, tilt } = policyMap(/** @type {any} */ (answers), ship);
+  const thrust = throttle > 0 ? throttle : false;
+  return {
+    variant: 'policy:' + policyName,
+    policy: policyName,
+    policyText: policy,
+    model,
+    thrust,
+    tilt,
+    action: actionName(thrust, tilt),
+    throttle: throttlePercent(throttle),
+    answers,
+    table: POLICY_TABLE,
+    probs: probsFor(thrust, tilt),
+    usage: totalUsage(calls),
+    ms: Math.round(performance.now() - startedAt),
+    fellBack,
+    upstream: { url, multi: true, calls, body: calls[0].body },
+    simState: ship,
+  };
+}
+
+/**
+ * Decide the controls for a ship state in the requested mode.
+ * @param {Ship} ship
+ * @param {DecideOptions} [options]
+ */
+export async function decide(ship, options = {}) {
+  const mode = knownModeId(options.variant || DEFAULTS.variant);
+  const model = options.model || MODEL;
+  const startedAt = performance.now();
+  if (mode === 'data') {
+    return decideData(ship, model, startedAt, options);
+  }
+  if (mode.startsWith('policy:')) {
+    return decidePolicy(ship, model, startedAt, options, mode.slice('policy:'.length));
+  }
+  return decideProse(ship, model, startedAt, options);
+}
+
+// ---- Playground proxy: validate a /v1/systemone body, forward it, return timing and raw text ----
+
+/**
+ * Check one question; push any problems onto `errors`.
+ * @param {string} key @param {any} question @param {string[]} errors
+ */
+function validateQuestion(key, question, errors) {
+  if (!/^[\w-]{1,64}$/.test(key)) {
+    errors.push(`questions key "${key}": letters, digits, _ or -`);
+  }
+  if (!question || !['noul', 'choice', 'score'].includes(question.type)) {
+    errors.push(`questions.${key}.type must be noul, choice or score`);
+    return;
+  }
+  if (typeof question.instructions !== 'string' || !question.instructions.trim()) {
+    errors.push(`questions.${key}.instructions: required string`);
+  }
+  const criteria = question.criteria;
+  const isPlainObject = !!criteria && typeof criteria === 'object' && !Array.isArray(criteria);
+  if (question.type === 'choice' && (!isPlainObject || Object.keys(criteria).length < 2)) {
+    errors.push(`questions.${key}.criteria: choice needs an object with 2+ options`);
+  }
+  if (question.type === 'score' && (!Array.isArray(criteria) || criteria.length < 2)) {
+    errors.push(`questions.${key}.criteria: score needs an array of 2+ level descriptions`);
+  }
+  if (question.type === 'noul' && criteria != null) {
+    if (typeof criteria !== 'object' || Array.isArray(criteria)) {
+      errors.push(`questions.${key}.criteria: noul criteria must be {true, false}`);
+    }
+  }
+}
+
+/** @param {any} keepAlive */
+function isValidKeepAlive(keepAlive) {
+  if (typeof keepAlive === 'number') {
+    return true;
+  }
+  return typeof keepAlive === 'string' && /^-?\d+(\.\d+)?(ms|s|m|h)?$/.test(keepAlive);
+}
+
+/**
+ * Validate a playground body.
+ * @param {any} body
+ * @returns {string[]}  error messages; empty when valid
+ */
+export function validateBody(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return ['body must be a JSON object'];
+  }
+  /** @type {string[]} */
+  const errors = [];
+  if (typeof body.model !== 'string' || !/^[\w.:/-]{1,100}$/.test(body.model)) {
+    errors.push('model: required string (letters, digits, . : / - _)');
+  }
+  const stateIsValid =
+    typeof body.state === 'string' || (body.state && typeof body.state === 'object');
+  if (!stateIsValid) {
+    errors.push('state: required (JSON object or prose string)');
+  }
+  const questions = body.questions;
+  const hasQuestions =
+    questions &&
+    typeof questions === 'object' &&
+    !Array.isArray(questions) &&
+    Object.keys(questions).length;
+  if (!hasQuestions) {
+    errors.push('questions: required non-empty object');
+  } else {
+    for (const [key, question] of Object.entries(questions)) {
+      validateQuestion(key, question, errors);
+    }
+  }
+  if (body.keep_alive != null && !isValidKeepAlive(body.keep_alive)) {
+    errors.push('keep_alive: e.g. "30m", "2h", "-1"');
+  }
+  return errors;
+}
+
+/**
+ * Forward a validated playground request.
+ * @param {{ host?: string, body?: any }} payload
+ * @returns {Promise<{ status: number, json: any }>}
+ */
+async function playground(payload) {
+  const key = knownHostKey(payload.host);
+  const host = HOST_TABLE[key];
+  const body = payload.body;
+  const errors = validateBody(body);
+  if (errors.length) {
+    return { status: 400, json: { error: 'invalid request', details: errors } };
+  }
+
+  // Forward only the known fields, in a fixed order.
+  const cleanRequest = {
+    model: body.model,
+    state: body.state,
+    questions: body.questions,
+    ...(body.keep_alive != null ? { keep_alive: body.keep_alive } : {}),
+  };
+  const bodyText = JSON.stringify(cleanRequest);
+  const startedAt = performance.now();
+  try {
+    const { r: response, sent } = await send(host, bodyText, AbortSignal.timeout(60000));
+    const raw = await response.text();
+    const ms = Math.round(performance.now() - startedAt);
+    let parsed = null;
     try {
-      const url = req.url.split('?')[0];
-      if (req.method === 'POST' && url === '/decide') { const q = JSON.parse(await readBody(req)); if (!q.sim || typeof q.sim !== 'object') return json(res, 400, { error: 'sim required' }); return json(res, 200, await decide(q.sim, q)); }
-      if (req.method === 'POST' && url === '/api/systemone') { let q; try { q = JSON.parse(await readBody(req)); } catch (e) { return json(res, e.code || 400, { error: e.code ? e.message : 'invalid JSON' }); } const o = await playground(q || {}); return json(res, o.status, o.json); }
-      if (url === '/api/models') return json(res, 200, await models(new URL(req.url, 'http://x').searchParams.get('host')));
-      if (url === '/api/examples') return json(res, 200, examples());
-      if (url === '/config') return json(res, 200, { ...DEFAULTS, modes: MODES() });
-      const f = url === '/sim.mjs' ? 'sim.mjs' : url.replace(/\/$/, '') === '/playground' ? 'playground.html' : 'index.html';
-      res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
-      res.end(fs.readFileSync(path.join(DIR, f)));
-    } catch (e) { json(res, e.code === 413 ? 413 : 500, { error: String(e.message || e) }); }
-  }).listen(PORT, HOST, () => console.log(`lander on http://${HOST}:${PORT} model=${MODEL} mode=${DEFAULTS.variant}`));
+      parsed = JSON.parse(raw);
+    } catch {
+      // Not JSON; the raw text is still returned.
+    }
+    return {
+      status: 200,
+      json: {
+        host: key,
+        url: host.url,
+        upstreamStatus: response.status,
+        ms,
+        request: cleanRequest,
+        // Only shown when the provider adapter rewrote the body.
+        sent: sent !== bodyText ? JSON.parse(sent) : undefined,
+        raw,
+        response: parsed,
+      },
+    };
+  } catch (error) {
+    const reason = /** @type {any} */ (error);
+    return {
+      status: 502,
+      json: {
+        error: 'upstream failed',
+        details: [String(reason.cause?.code || reason.message)],
+        host: key,
+        url: host.url,
+        ms: Math.round(performance.now() - startedAt),
+      },
+    };
+  }
+}
+
+/**
+ * The models installed on an Ollama host.
+ * @param {string | null} hostKey
+ */
+async function models(hostKey) {
+  const host = HOST_TABLE[knownHostKey(hostKey)];
+  if (host.kind !== 'ollama') {
+    return { models: [], note: 'model list only for Ollama hosts' };
+  }
+  const base = host.url.replace(/\/v1\/systemone$/, '');
+  const response = await fetch(base + '/api/tags', { signal: AbortSignal.timeout(5000) });
+  const tags = await response.json();
+  const modelList = (tags.models || []).map((/** @type {any} */ model) => ({
+    name: model.name,
+    size: model.size,
+    params: model.details?.parameter_size,
+    quant: model.details?.quantization_level,
+  }));
+  return { host: knownHostKey(hostKey), base, models: modelList };
+}
+
+// ---- HTTP ----
+
+/** Static files the pages load, with their content types. Any other path serves index.html. */
+const STATIC_FILES = {
+  '/sim.mjs': 'text/javascript',
+  '/game.js': 'text/javascript',
+  '/game.css': 'text/css',
+  '/playground.js': 'text/javascript',
+  '/playground.css': 'text/css',
+};
+
+/**
+ * @param {http.ServerResponse} response @param {number} statusCode @param {any} value
+ */
+function sendJson(response, statusCode, value) {
+  response.writeHead(statusCode, { 'content-type': 'application/json' });
+  response.end(JSON.stringify(value));
+}
+
+/**
+ * Read a request body, refusing anything over `maxLength` characters.
+ * @param {http.IncomingMessage} request
+ * @param {number} [maxLength]
+ */
+async function readBody(request, maxLength = 256000) {
+  let bodyText = '';
+  for await (const chunk of request) {
+    bodyText = bodyText + chunk;
+    if (bodyText.length > maxLength) {
+      throw Object.assign(new Error('body too large'), { code: 413 });
+    }
+  }
+  return bodyText;
+}
+
+/** @param {http.ServerResponse} response */
+async function handleDecide(request, response) {
+  const payload = JSON.parse(await readBody(request));
+  if (!payload.sim || typeof payload.sim !== 'object') {
+    return sendJson(response, 400, { error: 'sim required' });
+  }
+  return sendJson(response, 200, await decide(payload.sim, payload));
+}
+
+/** @param {http.IncomingMessage} request @param {http.ServerResponse} response */
+async function handlePlayground(request, response) {
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request));
+  } catch (error) {
+    const reason = /** @type {any} */ (error);
+    const statusCode = reason.code || 400;
+    return sendJson(response, statusCode, { error: reason.code ? reason.message : 'invalid JSON' });
+  }
+  const result = await playground(payload || {});
+  return sendJson(response, result.status, result.json);
+}
+
+/** @param {string} urlPath @param {http.ServerResponse} response */
+function serveFile(urlPath, response) {
+  /** @type {Record<string, string>} */
+  const staticFiles = STATIC_FILES;
+  let fileName = 'index.html';
+  let contentType = 'text/html';
+  if (staticFiles[urlPath]) {
+    fileName = urlPath.slice(1);
+    contentType = staticFiles[urlPath];
+  } else if (urlPath.replace(/\/$/, '') === '/playground') {
+    fileName = 'playground.html';
+  }
+  response.writeHead(200, { 'content-type': contentType, 'cache-control': 'no-store' });
+  response.end(fs.readFileSync(path.join(HERE, fileName)));
+}
+
+/** @param {http.IncomingMessage} request @param {http.ServerResponse} response */
+async function route(request, response) {
+  const fullUrl = request.url || '/';
+  const urlPath = fullUrl.split('?')[0];
+  if (request.method === 'POST' && urlPath === '/decide') {
+    return handleDecide(request, response);
+  }
+  if (request.method === 'POST' && urlPath === '/api/systemone') {
+    return handlePlayground(request, response);
+  }
+  if (urlPath === '/api/models') {
+    const hostKey = new URL(fullUrl, 'http://x').searchParams.get('host');
+    return sendJson(response, 200, await models(hostKey));
+  }
+  if (urlPath === '/api/examples') {
+    return sendJson(response, 200, examples());
+  }
+  if (urlPath === '/config') {
+    return sendJson(response, 200, { ...DEFAULTS, modes: MODES() });
+  }
+  return serveFile(urlPath, response);
+}
+
+function startServer() {
+  const server = http.createServer(async (request, response) => {
+    try {
+      await route(request, response);
+    } catch (error) {
+      const reason = /** @type {any} */ (error);
+      const statusCode = reason.code === 413 ? 413 : 500;
+      sendJson(response, statusCode, { error: String(reason.message || reason) });
+    }
+  });
+  server.listen(PORT, LISTEN_HOST, () => {
+    console.log(`lander on http://${LISTEN_HOST}:${PORT} model=${MODEL} mode=${DEFAULTS.variant}`);
+  });
+}
+
+// Only start listening when run directly (tests and tools import this file).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
 }

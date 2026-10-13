@@ -1,24 +1,158 @@
+// @ts-check
+// Fly the lander without a browser. Physics runs at 60 fps, and each decision is applied only
+// after its real latency (× TIME_SCALE), so slow models fly on stale controls like in the game.
+//
+// Environment:
+//   VARIANT=prose|data|policy:<name>  (default prose)   MODEL=tev1:4b   MAX_T=120 (sim seconds)
+//   EXTRA=2         add seeded extra starts to the 4 fixed ones (2 → 6 starts)
+//   RANDOM_START=1 SEED=N COUNT=6
+//                   instead fly COUNT random starts with seeds N, N+1, … (sim.mjs randomStart;
+//                   the same starts as the game's ?seed=N)
+
 import '../env.mjs';
-// Fly the lander without a browser. Physics at 60 fps; each decision is applied after its real latency (× TIME_SCALE).
-// env: VARIANT=prose|data|policy:<name> (default prose) MODEL=tev1:4b EXTRA=2 (add seeded random starts; 2 → 6 starts) MAX_T=120
-//      RANDOM_START=1 SEED=N COUNT=6: instead fly COUNT random starts (sim.mjs randomStart) with seeds N, N+1, … (same starts as the game's ?seed=N)
-import { newState, step, modelState, randomStart } from '../sim.mjs'; import { decide, DEFAULTS } from '../server.mjs';
-let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-const starts = [{ x: 40 }, { x: 135, vx: 2 }, { x: 80, vx: -3, y: 100 }, { x: 20, y: 140 }];
-for (let i = 0; i < +(process.env.EXTRA || 0); i++) starts.push({ x: Math.round(20 + rnd() * 80), vx: Math.round((rnd() - .5) * 40) / 10 });
-if (process.env.RANDOM_START === '1') { const s0 = +(process.env.SEED || 1); starts.length = 0; for (let i = 0; i < +(process.env.COUNT || 6); i++) starts.push({ seed: s0 + i, ...randomStart(s0 + i) }); }
-const TS = +(process.env.TIME_SCALE || 1), MAX_T = +(process.env.MAX_T || 120);
-const opt = { variant: process.env.VARIANT || DEFAULTS.variant, model: process.env.MODEL || DEFAULTS.model, host: process.env.PROVIDER || DEFAULTS.host };
-const all = [], scores = [], fuels = []; let agree = 0, nDec = 0, tok = 0, landed = 0;
-for (const st of starts) {
-  const { seed: _seed, ...st0 } = st, s = newState(st0); let d = { thrust: false, tilt: 'center' }, lat = [], maxFall = 0, thrSum = 0;
-  while (!s.outcome) { if (s.t > MAX_T) { s.outcome = `crash (timeout: still flying after ${MAX_T} s sim)`; break; }
-    const r = await decide({ ...s }, opt); lat.push(r.ms); tok = r.usage?.input_tokens; thrSum += +r.thrust || 0; nDec++;
-    const o = modelState(s); agree += !!r.thrust === (o.engine === 'burn') && r.tilt === (o.steer === 'none' ? 'center' : o.steer);
-    for (let t = 0; t < TS * r.ms / 1000 && !s.outcome; t += 1 / 60) { step(s, 1 / 60, d.thrust, d.tilt); maxFall = Math.max(maxFall, -s.vy); } // previous decision flies during latency
-    d = r; }
-  all.push(...lat); landed += s.outcome === 'LANDED'; scores.push(s.score ?? 0); fuels.push(s.fuel);
-  console.log(JSON.stringify(st), '->', s.outcome, `score=${(s.score ?? 0).toFixed(1)}${s.outcome === 'LANDED' ? ' ' + JSON.stringify(s.scoreBreakdown) : ''}`, `t=${s.t.toFixed(1)}s fuel=${s.fuel.toFixed(0)} decisions=${lat.length} avg=${(lat.reduce((a, b) => a + b, 0) / lat.length).toFixed(0)}ms maxfall=${maxFall.toFixed(1)} avgthr=${(thrSum / lat.length).toFixed(2)}`);
+import { newState, step, modelState, randomStart } from '../sim.mjs';
+import { decide, DEFAULTS } from '../server.mjs';
+
+/** @typedef {import('../sim.mjs').Ship} Ship */
+
+const FRAME_SECONDS = 1 / 60;
+const TIME_SCALE = Number(process.env.TIME_SCALE || 1);
+const MAX_T = Number(process.env.MAX_T || 120);
+
+const options = {
+  variant: process.env.VARIANT || DEFAULTS.variant,
+  model: process.env.MODEL || DEFAULTS.model,
+  host: process.env.PROVIDER || DEFAULTS.host,
+};
+
+/**
+ * The old Park–Miller generator for EXTRA starts (kept so EXTRA starts never change).
+ * @returns {() => number}
+ */
+function createExtraStartRandom() {
+  let seed = 7;
+  return () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
 }
-const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-console.log(`SUMMARY [${opt.host}] ${opt.model} ${opt.variant}: TS=${TS} landed ${landed}/${starts.length}, avg latency ${avg(all).toFixed(0)} ms, n=${all.length}, input_tokens ${tok}, agree-with-rule-oracle ${(100 * agree / nDec).toFixed(0)}%, avg score ${avg(scores).toFixed(2)}, avg fuel left ${avg(fuels).toFixed(0)}%`);
+
+/** @returns {Record<string, any>[]} */
+function buildStarts() {
+  if (process.env.RANDOM_START === '1') {
+    const firstSeed = Number(process.env.SEED || 1);
+    const count = Number(process.env.COUNT || 6);
+    const randomStarts = [];
+    for (let index = 0; index < count; index++) {
+      randomStarts.push({ seed: firstSeed + index, ...randomStart(firstSeed + index) });
+    }
+    return randomStarts;
+  }
+  const starts = [{ x: 40 }, { x: 135, vx: 2 }, { x: 80, vx: -3, y: 100 }, { x: 20, y: 140 }];
+  const random = createExtraStartRandom();
+  const extraCount = Number(process.env.EXTRA || 0);
+  for (let index = 0; index < extraCount; index++) {
+    const x = Math.round(20 + random() * 80);
+    const vx = Math.round((random() - 0.5) * 40) / 10;
+    starts.push({ x, vx });
+  }
+  return starts;
+}
+
+/** @param {number[]} values */
+function average(values) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+/**
+ * Does the model's decision match the simple rule oracle (modelState)?
+ * @param {any} decision @param {Ship} ship
+ */
+function agreesWithOracle(decision, ship) {
+  const oracle = modelState(ship);
+  const oracleTilt = oracle.steer === 'none' ? 'center' : oracle.steer;
+  return !!decision.thrust === (oracle.engine === 'burn') && decision.tilt === oracleTilt;
+}
+
+const totals = {
+  latencies: /** @type {number[]} */ ([]),
+  scores: /** @type {number[]} */ ([]),
+  fuels: /** @type {number[]} */ ([]),
+  agreements: 0,
+  decisions: 0,
+  lastInputTokens: /** @type {number | undefined} */ (undefined),
+  landed: 0,
+};
+
+/**
+ * Fly one start to an outcome and print one line about it.
+ * @param {Record<string, any>} start
+ */
+async function flyOne(start) {
+  const { seed: _seed, ...startOverrides } = start;
+  const ship = newState(startOverrides);
+  /** @type {any} */
+  let activeDecision = { thrust: false, tilt: 'center' };
+  /** @type {number[]} */
+  const latencies = [];
+  let maxFall = 0;
+  let throttleSum = 0;
+
+  while (!ship.outcome) {
+    if (ship.t > MAX_T) {
+      ship.outcome = `crash (timeout: still flying after ${MAX_T} s sim)`;
+      break;
+    }
+    const decision = await decide({ ...ship }, options);
+    latencies.push(decision.ms);
+    totals.lastInputTokens = decision.usage?.input_tokens;
+    throttleSum = throttleSum + (Number(decision.thrust) || 0);
+    totals.decisions = totals.decisions + 1;
+    if (agreesWithOracle(decision, ship)) {
+      totals.agreements = totals.agreements + 1;
+    }
+
+    // While the model was thinking, the previous decision kept flying.
+    const latencySeconds = (TIME_SCALE * decision.ms) / 1000;
+    for (let elapsed = 0; elapsed < latencySeconds && !ship.outcome; elapsed += FRAME_SECONDS) {
+      step(ship, FRAME_SECONDS, activeDecision.thrust, activeDecision.tilt);
+      maxFall = Math.max(maxFall, -ship.vy);
+    }
+    activeDecision = decision;
+  }
+
+  totals.latencies.push(...latencies);
+  if (ship.outcome === 'LANDED') {
+    totals.landed = totals.landed + 1;
+  }
+  totals.scores.push(ship.score ?? 0);
+  totals.fuels.push(ship.fuel);
+
+  const score = (ship.score ?? 0).toFixed(1);
+  const breakdown = ship.outcome === 'LANDED' ? ' ' + JSON.stringify(ship.scoreBreakdown) : '';
+  const averageLatency = average(latencies).toFixed(0);
+  const averageThrottle = (throttleSum / latencies.length).toFixed(2);
+  console.log(
+    JSON.stringify(start),
+    '->',
+    ship.outcome,
+    `score=${score}${breakdown}`,
+    `t=${ship.t.toFixed(1)}s fuel=${ship.fuel.toFixed(0)} decisions=${latencies.length} ` +
+      `avg=${averageLatency}ms maxfall=${maxFall.toFixed(1)} avgthr=${averageThrottle}`,
+  );
+}
+
+const starts = buildStarts();
+for (const start of starts) {
+  await flyOne(start);
+}
+
+const agreePercent = ((100 * totals.agreements) / totals.decisions).toFixed(0);
+console.log(
+  `SUMMARY [${options.host}] ${options.model} ${options.variant}: TS=${TIME_SCALE} ` +
+    `landed ${totals.landed}/${starts.length}, ` +
+    `avg latency ${average(totals.latencies).toFixed(0)} ms, n=${totals.latencies.length}, ` +
+    `input_tokens ${totals.lastInputTokens}, agree-with-rule-oracle ${agreePercent}%, ` +
+    `avg score ${average(totals.scores).toFixed(2)}, ` +
+    `avg fuel left ${average(totals.fuels).toFixed(0)}%`,
+);

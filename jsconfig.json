@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "noEmit": true,
+    "strict": false
+  },
+  "include": ["hello.mjs", "lander/**/*.mjs", "lander/**/*.js"],
+  "exclude": ["scratch", "node_modules"]
+}

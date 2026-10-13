@@ -83,7 +83,8 @@ lander/sim.mjs           physics + data-mode questions (shared with the browser)
 lander/prose.mjs         perception bands → prose sentences, prose-mode control map
 lander/policy.mjs        policy-mode questions and map
 lander/modes/            prose.json, policies/*.txt (edit these to change behavior)
-lander/index.html        game; lander/playground.html  playground
+lander/index.html        game page: game.js (logic), game.css
+lander/playground.html   playground page: playground.js, playground.css
 lander/tools/            headless.mjs (fly), proseprobe.mjs (offline question probe)
 ```
 

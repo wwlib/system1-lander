@@ -2,15 +2,17 @@
 
 A short map for finding the model calls. Every call ends up in one place on the server; the browser never talks to the model directly.
 
+Each file starts with a comment saying what it is for, and has `// @ts-check` with JSDoc types. `jsconfig.json` turns on type checking in editors. There is no build step and there are no dependencies: the pages load plain ES modules.
+
 ## One decision, end to end
 
-1. **Browser (`lander/index.html`).** `ask()` sends the current ship state to the game's server as `POST /decide`. When the reply arrives, `apply()` puts the chosen controls on the ship, and `renderHow()` fills the right-hand "how the model sees it" panel.
-2. **Server routes (`lander/server.mjs`).** The `/decide` route hands off to `decide()`, which picks the mode: `decideProse()`, `decideData()` or `decidePolicy()`.
-3. **The model call.** Each mode builds its request and calls `call()` in `server.mjs`. That calls `post()`, which tries the primary host and falls back to the secondary. The single `fetch` to `/v1/systemone` is `send()` in `lander/providers/index.mjs`, which also defines how each provider (Ollama, Jev, Microsoft Decision-1, OpenRouter) wants its request shaped.
+1. **Browser (`lander/game.js`, loaded by `lander/index.html`).** `ask()` sends the current ship state to the game's server as `POST /decide`. When the reply arrives, `applyDecision()` puts the chosen controls on the ship, and `renderHow()` fills the right-hand "how the model sees it" panel. `frame()` runs the physics and drawing on every animation frame.
+2. **Server routes (`lander/server.mjs`).** `route()` sends `/decide` to `handleDecide()`, which calls `decide()`. `decide()` picks the mode: `decideProse()`, `decideData()` or `decidePolicy()`.
+3. **The model call.** Each mode builds its request and calls `call()` in `server.mjs`. That calls `post()`, which tries the primary host and falls back to the secondary (`fallbackHostFor()`). The single `fetch` to `/v1/systemone` is `send()` in `lander/providers/index.mjs`, which also defines how each provider (Ollama, Jev, Microsoft Decision-1, OpenRouter) wants its request shaped.
 
 ```mermaid
 flowchart LR
-  A["index.html ask()"] -->|POST /decide| B["server.mjs decide()"]
+  A["game.js ask()"] -->|POST /decide| B["server.mjs decide()"]
   B --> C["decideProse / decideData / decidePolicy"]
   C --> D["call() then post()"]
   D --> E["providers send()"]
@@ -20,13 +22,14 @@ flowchart LR
 
 ## Prose mode (the default)
 
-- `lander/prose.mjs` (about 30 lines). `perceive()` turns the physics into two plain sentences; this is the part standing in for a vision model. `proseMap()` turns the model's choices into a target sideways speed and a throttle.
+- `lander/prose.mjs`. `perceive()` turns the physics into plain sentences (`padSentence()`, `altSentence()`, `driftSentence()`, using the `BANDS` table); this is the part standing in for a vision model. `proseMap()` turns the model's choices into a target sideways speed, a tilt and a throttle.
 - `lander/modes/prose.json` holds the three choice questions and their option descriptions, sent as-is.
 
 ## Everything else
 
-- **Physics and scoring:** `lander/sim.mjs`. `step()` moves the ship, `landingScore()` scores a landing, `randomStart(seed)` makes a random start, and `dataMap()` is the data mode's lookup table.
-- **Policy mode:** `lander/policy.mjs` builds the ship JSON (`shipJSON()`) and maps answers to controls (`policyMap()`). Policy texts are in `lander/modes/policies/`.
-- **Playground:** `lander/playground.html` calls the server's `/api/systemone` route, which goes through `playground()` and the same `post()` in `server.mjs`.
-- **Providers and config:** `lander/providers/index.mjs` and `lander/env.mjs` (reads `.env`).
-- **Without a browser:** `lander/tools/headless.mjs` flies the game from the command line by calling `decide()` directly. `hello.mjs` is the bare `/v1/systemone` call with nothing around it.
+- **Physics and scoring:** `lander/sim.mjs`. `step()` moves the ship, `landingScore()` scores a landing, `randomStart(seed)` makes a random start (seeded by `createSeededRandom()`), and `dataMap()` / `dataThrust()` are the data mode's lookup tables. The data mode's yes/no questions are `DATA_QUESTIONS`, asked in order.
+- **Policy mode:** `lander/policy.mjs` builds the ship JSON (`shipJSON()`), defines the four questions (`POLICY_QUESTIONS`) and maps answers to controls (`policyMap()`). Policy texts are in `lander/modes/policies/`.
+- **Playground:** `lander/playground.js` (loaded by `lander/playground.html`) calls the server's `/api/systemone` route. On the server, `playground()` checks the body with `validateBody()` and forwards it with `send()`. The examples come from `lander/examples.mjs`.
+- **Styles:** `lander/game.css` and `lander/playground.css`.
+- **Providers and config:** `lander/providers/index.mjs` (`hostTable()`, `send()`) and `lander/env.mjs` (reads `.env`).
+- **Without a browser:** `lander/tools/headless.mjs` flies the game from the command line by calling `decide()` directly (`flyOne()` per start). `lander/tools/proseprobe.mjs` tests the prose questions on single sentences. `hello.mjs` is the bare `/v1/systemone` call with nothing around it.

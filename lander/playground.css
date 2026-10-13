@@ -1,0 +1,126 @@
+/* The System 1 Playground page. */
+
+body {
+  background: #111;
+  color: #ddd;
+  font: 13px monospace;
+  margin: 0;
+  padding: 8px;
+}
+
+a {
+  color: #9cf;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 6px;
+  color: #ff0;
+}
+
+h3 {
+  font-size: 12px;
+  color: #ff0;
+  margin: 8px 0 3px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 4px 0;
+}
+
+select,
+input,
+button,
+textarea {
+  background: #222;
+  color: #eee;
+  border: 1px solid #444;
+  font: 12px monospace;
+  padding: 3px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button.go {
+  background: #264;
+  border-color: #4a6;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* State and questions side by side */
+#cols {
+  display: flex;
+  gap: 10px;
+}
+
+#cols > div {
+  flex: 1;
+  min-width: 0;
+}
+
+pre {
+  background: #000;
+  padding: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow: auto;
+  margin: 2px 0;
+}
+
+.err {
+  color: #f66;
+}
+
+.meta {
+  color: #999;
+}
+
+/* Probability bars */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 1px 0;
+}
+
+.bar i {
+  display: block;
+  height: 10px;
+  background: #4a6;
+}
+
+.bar span {
+  min-width: 140px;
+}
+
+/* One model's result box */
+.out {
+  border: 1px solid #333;
+  padding: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.top {
+  color: #ff0;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+td {
+  padding: 1px 6px;
+  border-bottom: 1px solid #222;
+}

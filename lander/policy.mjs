@@ -1,34 +1,177 @@
-// ---- POLICY pilot: the model judges the state against a plain-English policy text (lander/modes/policies/*.txt). ----
-// Behavior is changed by editing the policy file, not code. Each decision = 4 tiny noul calls (key 'q'),
-// each with state = { policy, ship } where ship is a compact JSON of named fields.
-// Code only maps the answer PROBABILITIES (graded) to controls with POLICY_TABLE below.
-import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-import { PAD, G, THRUST } from './sim.mjs';
-const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'modes', 'policies');
-export const policyNames = () => fs.readdirSync(DIR).filter(f => f.endsWith('.txt')).map(f => f.slice(0, -4)).sort();
-export const policyText = n => fs.readFileSync(path.join(DIR, (policyNames().includes(n) ? n : 'careful') + '.txt'), 'utf8').trim();
-const r1 = v => Math.round(v * 10) / 10;
-export function shipJSON(s) { const dx = r1((PAD.x0 + PAD.x1) / 2 - s.x);
-  return { height_above_pad_m: r1(s.y - PAD.y), vertical_speed_mps: r1(s.vy), vertical_motion: s.vy < -0.05 ? 'descending' : s.vy > 0.05 ? 'climbing' : 'level',
-    pad_direction: Math.abs(dx) < 3 ? 'directly below' : dx > 0 ? 'right' : 'left', pad_distance_m: Math.abs(dx),
-    sideways_motion: s.vx > 0.05 ? 'right' : s.vx < -0.05 ? 'left' : 'none', sideways_speed_mps: r1(Math.abs(s.vx)), sideways_vs_pad: Math.abs(s.vx) < 0.05 ? 'not moving sideways' : (s.vx > 0) === (dx > 0) ? 'moving toward the pad' : 'moving away from the pad', fuel_pct: Math.round(s.fuel),
-    crash_limits: 'touchdown is a crash if falling 4 m/s or faster, sideways 2 m/s or faster, or tilted; pad is 30 m wide' }; }
-const nq = (i, t, f) => ({ type: 'noul', instructions: i, criteria: { true: t, false: f } });
-// Question wording (round 2; see README for round 1).
-export const POLICY_Q = [
-  { name: 'too_fast', q: nq('Following the pilot policy, is the ship falling faster than the policy allows at its current height?', 'yes, falling too fast for the policy', 'no, the fall rate is acceptable or the ship is not falling') },
-  { name: 'too_slow', q: nq('Following the pilot policy, is the ship falling slower than it needs to (or climbing), wasting fuel or time?', 'yes, too slow or climbing', 'no') },
-  { name: 'go_right', q: nq('Following the pilot policy, does the ship need more rightward speed? Consider where the pad is, and that sideways speed must shrink to almost zero as the ship gets over the pad and near the ground.', 'yes, it needs more rightward speed', 'no, rightward speed is enough or too much') },
-  { name: 'go_left', q: nq('Following the pilot policy, does the ship need more leftward speed? Consider where the pad is, and that sideways speed must shrink to almost zero as the ship gets over the pad and near the ground.', 'yes, it needs more leftward speed', 'no, leftward speed is enough or too much') },
+// @ts-check
+// POLICY mode. The model judges the ship against a plain-English policy text
+// (lander/modes/policies/*.txt). To change behavior, edit the policy text, not the code.
+// Each decision is 4 small yes/no calls (key "q"), each with state = { policy, ship }.
+// Code uses the answer PROBABILITIES as graded values (POLICY_TABLE), not a 0.5 cutoff.
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { PAD, PAD_CENTER_X, G, THRUST } from './sim.mjs';
+
+/** @typedef {import('./sim.mjs').Ship} Ship */
+/** @typedef {import('./sim.mjs').Tilt} Tilt */
+
+const POLICY_FOLDER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'modes', 'policies');
+
+/**
+ * Names of the policy files, without ".txt", sorted.
+ * @returns {string[]}
+ */
+export function policyNames() {
+  const fileNames = fs.readdirSync(POLICY_FOLDER).filter((fileName) => fileName.endsWith('.txt'));
+  return fileNames.map((fileName) => fileName.slice(0, -4)).sort();
+}
+
+/**
+ * The text of a policy. Unknown names fall back to "careful".
+ * @param {string} name
+ * @returns {string}
+ */
+export function policyText(name) {
+  const knownName = policyNames().includes(name) ? name : 'careful';
+  return fs.readFileSync(path.join(POLICY_FOLDER, knownName + '.txt'), 'utf8').trim();
+}
+
+/** @param {number} value */
+function roundToTenth(value) {
+  return Math.round(value * 10) / 10;
+}
+
+/** @param {number} distanceToPad */
+function padDirection(distanceToPad) {
+  if (Math.abs(distanceToPad) < 3) {
+    return 'directly below';
+  }
+  return distanceToPad > 0 ? 'right' : 'left';
+}
+
+/** @param {number} verticalSpeed */
+function verticalMotion(verticalSpeed) {
+  if (verticalSpeed < -0.05) {
+    return 'descending';
+  }
+  if (verticalSpeed > 0.05) {
+    return 'climbing';
+  }
+  return 'level';
+}
+
+/** @param {number} horizontalSpeed */
+function sidewaysMotion(horizontalSpeed) {
+  if (horizontalSpeed > 0.05) {
+    return 'right';
+  }
+  if (horizontalSpeed < -0.05) {
+    return 'left';
+  }
+  return 'none';
+}
+
+/** @param {number} horizontalSpeed @param {number} distanceToPad */
+function sidewaysRelativeToPad(horizontalSpeed, distanceToPad) {
+  if (Math.abs(horizontalSpeed) < 0.05) {
+    return 'not moving sideways';
+  }
+  const movingRight = horizontalSpeed > 0;
+  const padIsRight = distanceToPad > 0;
+  return movingRight === padIsRight ? 'moving toward the pad' : 'moving away from the pad';
+}
+
+/**
+ * The compact ship description sent with every policy question. Key order is part of the request body.
+ * @param {Ship} ship
+ */
+export function shipJSON(ship) {
+  const distanceToPad = roundToTenth(PAD_CENTER_X - ship.x);
+  return {
+    height_above_pad_m: roundToTenth(ship.y - PAD.y),
+    vertical_speed_mps: roundToTenth(ship.vy),
+    vertical_motion: verticalMotion(ship.vy),
+    pad_direction: padDirection(distanceToPad),
+    pad_distance_m: Math.abs(distanceToPad),
+    sideways_motion: sidewaysMotion(ship.vx),
+    sideways_speed_mps: roundToTenth(Math.abs(ship.vx)),
+    sideways_vs_pad: sidewaysRelativeToPad(ship.vx, distanceToPad),
+    fuel_pct: Math.round(ship.fuel),
+    crash_limits:
+      'touchdown is a crash if falling 4 m/s or faster, sideways 2 m/s or faster, or tilted; pad is 30 m wide',
+  };
+}
+
+/** @param {string} instructions @param {string} whenTrue @param {string} whenFalse */
+function yesNoQuestion(instructions, whenTrue, whenFalse) {
+  return { type: 'noul', instructions, criteria: { true: whenTrue, false: whenFalse } };
+}
+
+const STEERING_HINT =
+  'Consider where the pad is, and that sideways speed must shrink to almost zero as the ship gets over the pad and near the ground.';
+
+/** The four judgment questions, asked in this order (wording from round 2 of the experiment). */
+export const POLICY_QUESTIONS = [
+  {
+    name: 'too_fast',
+    q: yesNoQuestion(
+      'Following the pilot policy, is the ship falling faster than the policy allows at its current height?',
+      'yes, falling too fast for the policy',
+      'no, the fall rate is acceptable or the ship is not falling',
+    ),
+  },
+  {
+    name: 'too_slow',
+    q: yesNoQuestion(
+      'Following the pilot policy, is the ship falling slower than it needs to (or climbing), wasting fuel or time?',
+      'yes, too slow or climbing',
+      'no',
+    ),
+  },
+  {
+    name: 'go_right',
+    q: yesNoQuestion(
+      'Following the pilot policy, does the ship need more rightward speed? ' + STEERING_HINT,
+      'yes, it needs more rightward speed',
+      'no, rightward speed is enough or too much',
+    ),
+  },
+  {
+    name: 'go_left',
+    q: yesNoQuestion(
+      'Following the pilot policy, does the ship need more leftward speed? ' + STEERING_HINT,
+      'yes, it needs more leftward speed',
+      'no, leftward speed is enough or too much',
+    ),
+  },
 ];
-export const HOVER = Math.round(G / THRUST * 100) / 100; // throttle that cancels gravity
+
+/** Throttle that exactly cancels gravity. */
+export const HOVER = Math.round((G / THRUST) * 100) / 100;
+
+/** The policy-mode control table, shown in the game's System 1 panel. */
 export const POLICY_TABLE = [
   `throttle = clamp(${HOVER} + 0.9·P(too_fast) − 0.9·P(too_slow), 0, 1)   (${HOVER} = hover throttle; graded, not a 0.5 cutoff)`,
   'steer = P(go_right) − P(go_left): > +0.15 → tilt right, < −0.15 → tilt left, else center',
   'height < 4 m → tilt center (touch down upright)',
 ];
-export function policyMap(a, s) {
-  const thr = Math.max(0, Math.min(1, HOVER + 0.9 * a.too_fast_p - 0.9 * a.too_slow_p)), d = a.go_right_p - a.go_left_p;
-  const tilt = s.y - PAD.y < 4 ? 'center' : d > 0.15 ? 'right' : d < -0.15 ? 'left' : 'center';
-  return { throttle: Math.round(thr * 100) / 100, tilt };
+
+/**
+ * Turn the four probabilities into controls.
+ * @param {{ too_fast_p: number, too_slow_p: number, go_right_p: number, go_left_p: number }} answers
+ * @param {Ship} ship
+ * @returns {{ throttle: number, tilt: Tilt }}
+ */
+export function policyMap(answers, ship) {
+  const rawThrottle = HOVER + 0.9 * answers.too_fast_p - 0.9 * answers.too_slow_p;
+  const throttle = Math.max(0, Math.min(1, rawThrottle));
+  const steerPreference = answers.go_right_p - answers.go_left_p;
+
+  /** @type {Tilt} */
+  let tilt = 'center';
+  if (ship.y - PAD.y < 4) {
+    tilt = 'center';
+  } else if (steerPreference > 0.15) {
+    tilt = 'right';
+  } else if (steerPreference < -0.15) {
+    tilt = 'left';
+  }
+  return { throttle: Math.round(throttle * 100) / 100, tilt };
 }
