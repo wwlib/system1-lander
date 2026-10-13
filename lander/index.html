@@ -53,7 +53,9 @@ let MODES = {};
 for (const [id, key, ls] of [['selvar', 'variant', 'mode3'], ['selmodel', 'model', 'model'], ['selhost', 'host', 'host']]) $(id).onchange = e => { opts[key] = e.target.value; localStorage.setItem('lander.' + ls, e.target.value); e.target.blur(); };
 function start() { return { x: 20 + Math.random() * 80, vx: (Math.random() - .5) * 4 }; }
 const calls = [], marks = [], lats = []; let n = 0, sum = 0; const keys = {};
-function reset() { held = null; lastGap = null; firstWall = null; shownOutcome = null; n0 = n; $('outcome').className = ''; s = newState(start()); dec = { ...dec, thrust: false, tilt: 'center', action: null }; gen++; marks.length = 0; appliedId = null; inflight = null; renderLog(); }
+function reset() { // new flight: per-flight counters and stats restart (call #, latency avg/min/max, sparkline, call log)
+  callNo = 0; n = 0; sum = 0; n0 = 0; lats.length = 0; calls.length = 0; $('lat').textContent = ''; $('howBody').textContent = 'waiting for first call…';
+  held = null; lastGap = null; firstWall = null; shownOutcome = null; $('outcome').className = ''; s = newState(start()); dec = { ...dec, thrust: false, tilt: 'center', action: null }; gen++; marks.length = 0; appliedId = null; inflight = null; renderLog(); }
 reset();
 addEventListener('keydown', e => { keys[e.key] = true; const k = e.key.toLowerCase();
   if (e.key === '?') document.body.classList.toggle('help'); if (k === 'm') toggle(); if (k === 'r') reset(); if (k === 's') togglePanel(); if (k === 't') toggleMarks(); if (k === 'p' || e.key === ' ') { e.preventDefault(); togglePause(); } });
@@ -128,7 +130,7 @@ async function ask() {
   try { const r = await fetch('/decide', { method: 'POST', body: JSON.stringify({ sim: s, ...opts }) }); const d = await r.json(); if (d.error) throw d.error;
     k.res = d;
     if (my !== gen) k.status = 'stale'; else if (paused) { k.status = 'held'; held = { k, d, mk }; } else apply(k, d, mk);
-    renderHow(k);
+    if (my === gen) renderHow(k); // a reply from before a reset is discarded, not shown
   } catch (e) { k.status = 'error'; k.err = String(e); }
   if (inflight === k) inflight = null; renderLog();
 }
