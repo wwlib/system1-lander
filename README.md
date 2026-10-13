@@ -4,11 +4,6 @@ A lunar lander flown in real time by a small **System 1 decision model** through
 
 ![Lander in prose mode after a random-start landing scored 7.9, with the System 1 panel showing the prose sentences, choice probabilities, code mapping and request](docs/screenshot-landed.png)
 
-<details><summary>Mid-descent</summary>
-
-![Lander mid-descent in prose mode](docs/screenshot-lander.png)
-</details>
-
 ## Run it
 
 ```bash
