@@ -1,0 +1,248 @@
+<!doctype html><html><head><meta charset="utf-8"><title>System 1 Lander</title>
+<style>
+*{box-sizing:border-box}body{background:#000;color:#0f0;font:13px monospace;margin:0;display:flex;height:100vh;overflow:hidden}
+#stage{flex:1;position:relative;min-width:0}#c{display:block;width:100%;height:100%}
+#hud{position:absolute;top:100px;left:8px;font-size:12px;background:#000b;padding:6px 8px;border:1px solid #233;min-width:250px;line-height:1.45;pointer-events:none}#hud .g{color:#9f9;font-weight:bold;margin-top:4px;border-bottom:1px solid #233}#hud .g:first-child{margin-top:0}#hud .g.rv{color:#f4f}#hud .r{display:flex;gap:10px;justify-content:space-between}#hud .k{color:#888}#hud .v{color:#eee}#hud .on{color:#fa0}#hud .fb{display:inline-block;width:80px;height:8px;background:#222;vertical-align:middle;margin-right:4px}#hud .fb i{display:block;height:100%}#help{display:none;position:absolute;right:8px;top:100px;background:#000d;border:1px solid #333;padding:8px 10px;font-size:12px;white-space:pre;color:#ccc}body.help #help{display:block}#btns{position:absolute;top:8px;left:8px;right:8px;text-align:right}button{margin:4px;font:inherit}
+body.nopanel #panel{display:none}#paused{display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:64px;color:#ff0;background:#0006;pointer-events:none}body.paused #paused{display:flex}#outcome{display:none;position:absolute;left:0;right:0;top:44%;text-align:center;pointer-events:none;text-shadow:0 0 12px #000}#outcome.show{display:block}#outcome.part .big{font-size:30px!important}#outcome .big{font-size:56px;font-weight:bold}#outcome .sub{font-size:16px;color:#ddd;white-space:pre}#outcome.win .big{color:#0f8}#outcome.lose .big{color:#f44}
+#how{border-bottom:1px solid #333;max-height:55vh;overflow-y:auto;padding:0 6px}#how summary{color:#9f9;padding:4px 0}#how h3{margin:6px 0 2px;font-size:12px;color:#ff0}table.ex{border-collapse:collapse;font-size:11px;width:100%}table.ex td{border-bottom:1px solid #222;padding:1px 3px;vertical-align:top}table.ex td:nth-child(2){color:#fff}table.ex td:nth-child(3){color:#888}
+#panel{width:min(460px,42vw);border-left:1px solid #333;display:flex;flex-direction:column;background:#050805}
+#panel h2{margin:0;padding:6px 8px;font-size:14px;color:#9f9;border-bottom:1px solid #333}
+#stats{padding:4px 8px;color:#aaa;display:flex;gap:8px;align-items:center;flex-wrap:wrap}#spark{background:#111;border:1px solid #333}
+#log{flex:1;overflow-y:auto;padding:4px}
+.call{border:1px solid #333;border-left:4px solid #555;margin:4px 0;padding:4px 6px;background:#0a0a0a}
+.call.pending{border-color:#ff0;animation:pulse 1s infinite}.call.applied{border-color:#0ff;background:#032}.call.rival{background:#1a031a}.call.rival.applied{background:#2a0a2a;border-color:#f4f}.tag.rv{background:#f4f;color:#000}
+.call .hd{display:flex;justify-content:space-between;color:#ddd}.tag{padding:0 4px;border-radius:3px;font-size:11px}
+.tag.pend{background:#ff0;color:#000}.tag.app{background:#0ff;color:#000}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid #ff0;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}@keyframes pulse{50%{background:#220}}
+pre{margin:2px 0;white-space:pre-wrap;word-break:break-all;color:#8c8;font-size:11px;background:#000;padding:3px}
+details summary{cursor:pointer;color:#888}.bar{display:flex;align-items:center;gap:4px;font-size:11px}
+.bar .lab{width:92px}.bar .bg{flex:1;height:9px;background:#222}.bar .fg{height:100%}.bar.ch .lab{color:#fff;font-weight:bold}
+.meta{color:#aaa;font-size:11px}.err{color:#f55}
+</style></head>
+<body><div id="stage"><canvas id="c"></canvas><div id="hud"></div>
+<div id="help">KEYS
+ M  AI / manual pilot      arrows  manual thrust+tilt
+ P / Space  pause         R  reset / new race
+ S  System 1 panel         T  call markers
+ V  rival on/off           ?  this help
+
+MARKERS (T)
+ ○ where a call was sent   ● where its result was applied
+ line = latency gap; colour = action (rival: magenta)
+
+LANDING  |vy| &lt; 4 m/s, |vx| &lt; 2 m/s, tilt &lt; 0.3 rad, on pad
+SCORE    10 minus deductions, plus fuel bonus</div><div id="paused">PAUSED</div><div id="outcome"></div><div id="board" style="position:absolute;bottom:8px;right:8px;background:#0008;padding:4px 6px;white-space:pre;font-size:12px"></div><div id="btns"><button id="mode">Mode: AI (M)</button><button id="pause">Pause (P/Space)</button><button id="reset">Reset (R)</button><button id="tpanel">Panel (S)</button><button id="tmarks">Markers (T)</button><br><select id="selmode"><option value="physics">mode: physics (model pilots)</option><option value="hints">mode: hints (pre-computed labels)</option></select><select id="selvar"></select><select id="selmodel"><option>tev1:4b</option><option>tev1:0.8b</option><option>nimble:9b</option></select><select id="selhost"><option value="primary">Ollama: primary</option></select><br><label style="background:#0008;padding:2px;color:#f4f"><input type="checkbox" id="rivalOn"> Rival (V)</label><select id="selpersona"></select><select id="selstart"><option value="random">starts: random</option><option value="same">starts: same (x40)</option><option value="sides">starts: both sides (x75 vs x195)</option><option value="high">starts: player x40 h140 vs rival x20 h140</option></select><label style="background:#0008;padding:2px">time scale <input id="ts" type="range" min="0.1" max="1" step="0.05"> <span id="tsv"></span></label></div></div>
+<div id="panel"><h2>System 1 calls → /v1/systemone</h2>
+<div class="meta" style="padding:2px 6px"><a href="/playground" target="_blank" style="color:#9cf">System 1 Playground ↗</a> · <button id="cap" title="open the latest call (first sub-call for multi/policy) in the playground">open latest call in playground</button></div><details id="how" open><summary>How the model sees the game (latest call)</summary><div id="howBody" class="meta">waiting for first call…</div></details><details id="rhow" style="border-bottom:1px solid #333;padding:0 6px;max-height:40vh;overflow-y:auto"><summary style="color:#f4f;padding:4px 0">How the RIVAL thinks (latest rival call)</summary><div id="rhowBody" class="meta">enable Rival (V)</div></details><div id="stats"><canvas id="spark" width="180" height="34"></canvas><span id="lat"></span></div>
+<div id="log"></div></div>
+<script type="module">
+import { newState, step, terrainY, PAD, W, ACTIONS } from './sim.mjs';
+const COL = { burn_left: '#f60', burn_center: '#f33', burn_right: '#f0a', coast_left: '#0af', coast_center: '#0f8', coast_right: '#a6f' };
+const $ = id => document.getElementById(id), c = $('c'), g = c.getContext('2d'), hud = $('hud'), logEl = $('log'), spark = $('spark'), sg = spark.getContext('2d');
+let s, ai = true, dec = { thrust: false, tilt: 'center', action: null, ms: 0 }, inflight = null, gen = 0, callNo = 0, flash = 0, appliedId = null;
+let n0 = 0, lastGap = null, firstWall = null, shownOutcome = null; let paused = false, held = null, showMarks = localStorage.getItem('lander.marks') !== '0';
+if (localStorage.getItem('lander.panel') === '0') document.body.classList.add('nopanel');
+const opts = { mode: localStorage.getItem('lander.mode') || 'physics', variant: localStorage.getItem('lander.variant2') || '', model: localStorage.getItem('lander.model') || '', host: localStorage.getItem('lander.host') || '' };
+fetch('/config').then(r => r.json()).then(c => { $('selvar').innerHTML = c.variants.map(v => `<option value="${v}">physics q: ${v}</option>`).join('');
+  if (!c.variants.includes(opts.variant)) opts.variant = ''; opts.variant ||= c.variant; if (!localStorage.getItem('lander.ts2') && c.timeScale) { opts.timeScale = c.timeScale; $('ts').value = c.timeScale; $('tsv').textContent = c.timeScale + '×'; } opts.model ||= c.model; opts.host = c.hosts?.[opts.host] ? opts.host : c.host; $('selhost').innerHTML = Object.keys(c.hosts || { primary: 1 }).map(h => `<option value="${h}">${esc(c.hostLabels?.[h] || h)}</option>`).join(''); $('selhost').value = opts.host; $('selmode').value = opts.mode; $('selvar').value = opts.variant; $('selmodel').value = opts.model; syncSel(); }).catch(() => {});
+opts.timeScale = +(localStorage.getItem('lander.ts2') || 1); $('ts').value = opts.timeScale; $('tsv').textContent = opts.timeScale + '×';
+$('ts').oninput = e => { opts.timeScale = +e.target.value; $('tsv').textContent = opts.timeScale + '×'; localStorage.setItem('lander.ts2', opts.timeScale); };
+$('ts').onchange = e => e.target.blur();
+function syncSel() { $('selvar').disabled = opts.mode !== 'physics'; }
+for (const [id, key] of [['selmode', 'mode'], ['selvar', 'variant'], ['selmodel', 'model'], ['selhost', 'host']]) $(id).onchange = e => { opts[key] = e.target.value; localStorage.setItem('lander.' + (key === 'variant' ? 'variant2' : key), e.target.value); syncSel(); e.target.blur(); };
+const RV = { on: localStorage.getItem('lander.rival') === '1', persona: localStorage.getItem('lander.persona') || 'careful', s: null, dec: { thrust: false, tilt: 'center', action: null }, inflight: null, held: null, marks: [], appliedId: null, n: 0, sum: 0, flash: 0 };
+let startPreset = localStorage.getItem('lander.start') || 'random', race = null;
+const board = JSON.parse(localStorage.getItem('lander.board') || '{}');
+const PCOL = '#ddd', RCOL = '#f4f';
+$('rivalOn').checked = RV.on; $('rivalOn').onchange = e => { RV.on = e.target.checked; localStorage.setItem('lander.rival', RV.on ? '1' : '0'); e.target.blur(); reset(); };
+$('selstart').value = startPreset; $('selstart').onchange = e => { startPreset = e.target.value; localStorage.setItem('lander.start', startPreset); e.target.blur(); reset(); };
+fetch('/config').then(r => r.json()).then(c => { $('selpersona').innerHTML = (c.personas || []).map(p => `<option value="${p}">rival: ${p}</option>`).join(''); $('selpersona').value = RV.persona; }).catch(() => {});
+$('selpersona').onchange = e => { RV.persona = e.target.value; localStorage.setItem('lander.persona', RV.persona); e.target.blur(); reset(); };
+function starts() { const r = () => ({ x: 20 + Math.random() * 80, vx: (Math.random() - .5) * 4 });
+  if (startPreset === 'same') return [{ x: 40 }, { x: 40 }]; if (startPreset === 'sides') return [{ x: 75 }, { x: 195 }]; if (startPreset === 'high') return [{ x: 40, y: 150 }, { x: 20, y: 150 }];
+  const a = r(); return [a, { x: Math.min(195, Math.max(5, 270 - a.x)), vx: -a.vx }]; }
+function boardKey() { return 'vs ' + RV.persona; }
+function drawBoard() { const b = board[boardKey()]; if (!RV.on) { $('board').style.display = 'none'; return; } $('board').style.display = '';
+  const L = (w, o) => o ? `${w.padEnd(7)} wins ${o.wins}  landed ${o.landed}/${o.races}  avg score ${(o.scoreSum / Math.max(1, o.races)).toFixed(2)}` : `${w} -`;
+  $('board').textContent = `SCOREBOARD (${boardKey()})
+${L('player', b?.player)}
+${L('rival', b?.rival)}`; }
+const calls = [], marks = [], lats = []; let n = 0, sum = 0; const keys = {};
+function reset() { drawBoard && 0; RV.held = null; RV.inflight = null; RV.marks.length = 0; RV.appliedId = null; RV.dec = { thrust: false, tilt: 'center', action: null }; race = null; held = null; lastGap = null; firstWall = null; shownOutcome = null; n0 = n; $('outcome').className = ''; { const [a, b] = starts(); s = newState(a); RV.s = newState(b); } dec = { ...dec, thrust: false, tilt: 'center', action: null }; gen++; marks.length = 0; appliedId = null; inflight = null; renderLog(); }
+reset(); drawBoard();
+addEventListener('keydown', e => { keys[e.key] = true; const k = e.key.toLowerCase();
+  if (e.key === '?') document.body.classList.toggle('help'); if (k === 'v') { $('rivalOn').checked = !$('rivalOn').checked; $('rivalOn').onchange({ target: $('rivalOn') }); } if (k === 'm') toggle(); if (k === 'r') reset(); if (k === 's') togglePanel(); if (k === 't') toggleMarks(); if (k === 'p' || e.key === ' ') { e.preventDefault(); togglePause(); } });
+function togglePanel() { const h = document.body.classList.toggle('nopanel'); localStorage.setItem('lander.panel', h ? '0' : '1'); }
+function toggleMarks() { showMarks = !showMarks; localStorage.setItem('lander.marks', showMarks ? '1' : '0'); $('tmarks').textContent = `Markers: ${showMarks ? 'on' : 'off'} (T)`; }
+function togglePause() { paused = !paused; document.body.classList.toggle('paused', paused); $('pause').textContent = paused ? 'Resume (P/Space)' : 'Pause (P/Space)';
+  if (!paused && held) { const h = held; held = null; apply(h.k, h.d, h.mk); renderLog(); }
+  if (!paused && RV.held) { const h = RV.held; RV.held = null; rivalApply(h.k, h.d, h.mk); renderLog(); } }
+$('tpanel').onclick = togglePanel; $('tmarks').onclick = toggleMarks; $('pause').onclick = togglePause; $('tmarks').textContent = `Markers: ${showMarks ? 'on' : 'off'} (T)`;
+addEventListener('keyup', e => keys[e.key] = false);
+function toggle() { ai = !ai; $('mode').textContent = `Mode: ${ai ? 'AI' : 'Manual'} (M)`; }
+$('mode').onclick = toggle; $('reset').onclick = reset;
+const esc = t => String(t).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+function bars(probs, ch) { return Object.keys(ACTIONS).map(k => { const p = +(probs?.[k] ?? 0);
+  return `<div class="bar ${k === ch ? 'ch' : ''}"><span class="lab">${k}</span><span class="bg"><span class="fg" style="display:block;width:${(p * 100).toFixed(1)}%;background:${COL[k]}"></span></span><span>${p.toFixed(3)}</span></div>`; }).join(''); }
+function subCallsHTML(d, full) { return `<div class="meta">${d.upstream.calls.filter(c => !c.skipped && !c.cached).length} sequential sub-calls · total ${d.ms} ms · ${d.usage.input_tokens} input tokens</div>` +
+  d.upstream.calls.map(c => c.cached ? `<div class="meta" style="color:#f4f">· ${esc(c.name)} → <b>${esc(c.answer)}</b> (model answer from the first call with this personality, cached)</div>` : c.skipped ? `<div class="meta" style="opacity:.5">· ${esc(c.name)}: skipped (decided by earlier answer)</div>` :
+   `<div style="border-left:2px solid ${c.answer ? '#0f8' : '#f66'};padding-left:4px;margin:2px 0"><span style="color:#fff">${esc(c.name)}</span> → <b>${c.answer ? 'YES' : 'no'}</b> (p=${(+c.p).toFixed(2)}) · ${c.ms} ms · ${c.usage?.input_tokens} tok` +
+   (full ? `<pre>${esc(JSON.stringify(JSON.parse(c.body), null, 2))}</pre><div class="meta">raw response</div><pre>${esc(c.rawResponse)}</pre>` : `<div class="meta">state ${esc(JSON.stringify(c.request.state))} · Q: ${esc(c.request.questions.q.instructions)}</div>`) + `</div>`).join(''); }
+function callHTML(k) {
+  const st = k.status === 'pending' ? `<span class="tag pend"><span class="spin"></span> in flight <span class="el" data-id="${k.id}">0</span> ms</span>` :
+    k.status === 'held' ? '<span class="tag pend">HELD (paused) – applies on resume</span>' : (k.rival ? k.id === RV.appliedId : k.id === appliedId) ? '<span class="tag app">APPLIED</span>' : k.status === 'error' ? '<span class="tag err">error</span>' : k.status === 'stale' ? '<span class="tag">discarded (reset)</span>' : '';
+  const req = k.res?.upstream?.request; let body = '';
+  if (req && k.res.upstream.multi) body = subCallsHTML(k.res, false) + `<div class="meta">result: <b style="color:${COL[k.res.action]}">${k.res.action}</b> · applied ${k.appliedT != null ? 't=' + k.appliedT.toFixed(2) + 's' : k.status}</div>`;
+  else if (req) { const { questions, ...rest } = req;
+    body = `<div class="meta">request → ${esc(k.res.upstream.url)}</div><pre>${esc(JSON.stringify(rest, null, 1))}</pre>` +
+      (k.id === calls[0]?.id ? `<div class="meta">questions</div><pre>${esc(JSON.stringify(questions, null, 1))}</pre>` : `<details><summary>questions (constant)</summary><pre>${esc(JSON.stringify(questions, null, 1))}</pre></details>`) +
+      `<div class="meta">result: <b style="color:${COL[k.res.action]}">${k.res.action}</b> · ${k.res.ms} ms · tokens in ${k.res.usage?.input_tokens ?? '?'} / out ${k.res.usage?.output_tokens ?? '?'} · ${k.appliedT != null ? `applied at t=${k.appliedT.toFixed(2)}s` : k.status === "held" ? "held until resume" : "not applied"}</div>${bars(k.res.probs, k.res.action)}` +
+      `<details><summary>raw response</summary><pre>${esc(JSON.stringify(k.res.upstream.response, null, 1))}</pre></details>`;
+  } else if (k.status === 'pending') body = `<div class="meta">sim state sent to /decide</div><pre>${esc(JSON.stringify(k.sent))}</pre>`;
+  if (k.err) body += `<div class="err">${esc(k.err)}</div>`;
+  return `<div class="call ${k.rival ? 'rival' : ''} ${k.status === 'pending' ? 'pending' : ''} ${(k.rival ? k.id === RV.appliedId : k.id === appliedId) ? 'applied' : ''}" style="border-left-color:${COL[k.res?.action] || '#555'}">
+   <div class="hd"><span>${k.rival ? `<span class="tag rv">RIVAL · ${esc(k.persona)}</span> ` : '<span class="tag" style="background:#ddd;color:#000">PLAYER</span> '}#${k.id} · ${k.wall} · sim t=${k.sentT.toFixed(2)}s</span>${st}</div>${body}</div>`;
+}
+function renderLog() {
+  // keep open <details> state across re-renders
+  const open = new Set([...logEl.querySelectorAll('details[open]')].map(d => d.closest('.call')?.dataset.k + '|' + d.querySelector('summary').textContent));
+  logEl.innerHTML = calls.slice().reverse().map(k => callHTML(k).replace('<div class="call', `<div data-k="${k.id}" class="call`)).join('');
+  logEl.querySelectorAll('details').forEach(d => { if (open.has(d.closest('.call').dataset.k + '|' + d.querySelector('summary').textContent)) d.open = true; });
+  drawSpark();
+}
+function drawSpark() {
+  sg.clearRect(0, 0, spark.width, spark.height); const L = lats.slice(-60); if (!L.length) return;
+  const mx = Math.max(1000, ...L); sg.strokeStyle = '#333'; const y500 = spark.height - 500 / mx * spark.height; sg.beginPath(); sg.moveTo(0, y500); sg.lineTo(spark.width, y500); sg.stroke();
+  sg.strokeStyle = '#0f0'; sg.beginPath(); L.forEach((v, i) => sg.lineTo(i * spark.width / 59, spark.height - v / mx * spark.height)); sg.stroke();
+  $('lat').textContent = `last ${L[L.length - 1]} ms · avg ${(sum / n).toFixed(0)} · min ${Math.min(...L)} · max ${Math.max(...L)} (n=${n}) · grey line=500ms`;
+}
+function apply(k, d, mk) { dec = d; d.appliedSimT = s.t; lastGap = { id: k.id, dt: s.t - k.sentT, dist: Math.hypot(s.x - mk.x, s.y - mk.y), ms: d.ms, calls: d.usage?.calls ?? 1, tok: d.usage?.input_tokens ?? 0 }; k.status = 'done'; k.appliedT = s.t; appliedId = k.id; mk.action = d.action; mk.ax = s.x; mk.ay = s.y; flash = 1; n++; sum += d.ms; lats.push(d.ms); if (lats.length > 200) lats.shift(); }
+let lastCap = null; $('cap').onclick = e => { e.target.blur(); if (!lastCap) return alert('no model call yet'); localStorage.setItem('pg.capture', JSON.stringify(lastCap)); window.open('/playground#capture', '_blank'); };
+function renderHow(k) { const d = k.res, u = d.upstream, ss = d.simState, f = v => typeof v === 'number' ? +v.toFixed(3) : v; try { lastCap = { body: JSON.parse(u.body), host: opts.host, label: `${d.variant} call #${k.id}${u.multi ? ' (sub-call 1 of ' + u.calls.length + ': ' + u.calls[0].name + ')' : ''}` }; } catch {}
+  if (u.multi) { const raw = Object.fromEntries(Object.entries(ss).map(([a, b]) => [a, f(b)]));
+    if (d.policyText) { $('howBody').innerHTML = `<div class="meta">POLICY <b style="color:#ff0">${esc(d.policy)}</b> · ${esc(d.model)} · call #${k.id} · ${d.ms} ms · ${d.usage.calls} sub-calls · throttle <b>${esc(d.throttle)}</b> · tilt <b>${esc(d.tilt)}</b></div>` +
+      `<h3>pilot policy (lander/policies/${esc(d.policy)}.txt — edit the text to change behavior)</h3><pre style="white-space:pre-wrap;color:#ff0">${esc(d.policyText)}</pre>` +
+      `<h3>ship state sent (compact JSON)</h3><pre>${esc(JSON.stringify(u.calls[0].request.state.ship, null, 1))}</pre>` +
+      `<h3>judgment answers (graded probabilities)</h3><table class="ex">${u.calls.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.request.questions.q.instructions)}</td><td><b>${(+c.p).toFixed(2)}</b></td></tr>`).join('')}</table>` +
+      `<h3>code mapping (fixed)</h3><table class="ex">${d.table.map(t => `<tr><td colspan=3>${esc(t)}</td></tr>`).join('')}</table>` +
+      `<h3>every exact body POSTed and raw response</h3>` + subCallsHTML(d, true); return; }
+    $('howBody').innerHTML = `<div class="meta">${d.fellBack ? '<b style="color:#f55">primary host unreachable → fell back to secondary</b> · ' : ''}${esc(u.url)} · physics/${esc(d.variant)} · ${esc(d.model)} · call #${k.id} · ${k.wall} · sim t=${k.sentT.toFixed(2)}s · ${d.ms} ms total</div>` +
+     `<h3>(a) raw sim state (browser → POST /decide)</h3><pre>${esc(JSON.stringify({ ...raw, pad: { x0: PAD.x0, x1: PAD.x1, y: PAD.y } }, null, 1))}</pre>` +
+     `<h3>(b) ${esc(d.variant).toUpperCase()}: transform = none — the model answers one tiny yes/no fact per call</h3><div class="meta">Each sub-call gets only the raw numbers it needs (rounded to 0.1; fall_speed = −vy, sideways_speed and pad_distance = absolute values). Question keys are neutral ("q") because named keys biased the model. Code only maps the answers with this fixed table:</div><table class="ex">${d.table.map(t => `<tr><td colspan=3>${esc(t)}</td></tr>`).join('')}</table>` +
+     `<div class="meta">answers: ${esc(JSON.stringify(Object.fromEntries(Object.entries(d.answers).filter(([a]) => !a.endsWith('_p')))))} → <b style="color:${COL[d.action]}">${d.action}</b></div>` +
+     `<h3>(c)+(d) every exact body POSTed to ${esc(u.url)} and its raw response, in order</h3>` + subCallsHTML(d, true); return; }
+  if (d.scene) { const body = JSON.parse(u.body), st = String(body.state), [facts, imp] = st.split(' Impressions: ');
+    const pb = o => Object.entries(o || {}).map(([k, v]) => `${esc(k)} ${(+v).toFixed(2)}`).join(' · ');
+    $('howBody').innerHTML = `<div class="meta">SCENE ${esc(d.variant)} · ${esc(d.model)} · call #${k.id} · ${d.ms} ms · ${d.usage?.input_tokens ?? '?'} tok · ${esc(u.url)}</div>` +
+      `<h3>(a) prose state sent (descriptive facts${imp ? ' + perception impressions' : ''}; no action advice)</h3><pre>${esc(facts)}</pre>` +
+      (imp ? `<h3>perception layer (code; could be a vision model): judgments only, never an action</h3><pre style="color:#fc6">${esc(imp)}</pre>` : '') +
+      `<h3>(b) model's choice → controls</h3><div class="meta"><b style="color:${COL[d.action]}">${esc(d.ctrl)}</b>${d.throttle ? ` · throttle probs: ${pb(d.throttleP)}` : ''} · code only maps control names to inputs${/s\dc$/.test(d.variant) ? ' (form c: exactly one tilt yes → that tilt, else upright)' : ''}</div>` +
+      `<h3>mission + controls (question instructions)</h3>${Object.entries(body.questions).map(([q, v]) => `<div class="meta"><b>${esc(q)}</b> (${esc(v.type)}): ${esc(v.instructions)}<br>options: ${esc(JSON.stringify(v.criteria))}</div>`).join('')}` +
+      `<h3>(c) exact body POSTed (${u.body.length} bytes)</h3><pre>${esc(JSON.stringify(body, null, 2))}</pre><h3>(d) raw response</h3><pre>${esc(u.rawResponse)}</pre>`; return; }
+  const raw = Object.fromEntries(Object.entries(ss).map(([a, b]) => [a, f(b)]));
+  $('howBody').innerHTML = `<div class="meta">${esc(d.mode)}${d.mode === 'physics' ? '/' + esc(d.variant) : ''} · ${esc(d.model)} · call #${k.id} · ${k.wall} · sim t=${k.sentT.toFixed(2)}s · ${d.ms} ms</div>` +
+   `<h3>(a) raw sim state (browser → POST /decide)</h3><pre>${esc(JSON.stringify({ ...raw, pad: { x0: PAD.x0, x1: PAD.x1, y: PAD.y } }, null, 1))}</pre>` +
+   (d.explain ? `<h3>(b) HINTS mode: features() transform (server, sim.mjs) — the model only sees the → rows</h3><table class="ex">${d.explain.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td>${esc(c)}</td></tr>`).join('')}</table>` :
+    `<h3>(b) PHYSICS mode (${esc(d.variant)}): transform = none — model decides</h3><div class="meta">${/coarse/.test(d.variant) ? 'Coarse bands: alt_m and dx_to_pad_m rounded to 10 m, speeds to 1 m/s (so states repeat and hit the prompt cache). Rules are given as lookup tables; the model compares.' : 'Only rounding/unit conversion: alt_m = y − pad.y, dx_to_pad_m = pad center − x (+ = pad right), angle_deg = angle·57.3.'} No engine/steer conclusions are computed for the model.${d.thrustBy !== 'model' ? ' <b style="color:#ff0">HYBRID: thrust is decided by code (descent rule: burn if vy &lt; −clamp(alt/10, 0.7, 5), or −0.5 when far from pad below 35 m); the model decides steering only.</b>' : (d.variant === 'facts' ? ' FACTS: the model answers 4 yes/no questions (thrust? pad right? moving right? too fast for distance?). Code only maps the 3 steering facts to a tilt with a fixed table: moving away/stopped → tilt toward pad; approaching and too fast → tilt away (brake); approaching, not too fast → tilt toward. No physics math in code.' : ' The model decides both thrust and steering.')} Sim time scale ${opts.timeScale}×.</div><table class="ex">${Object.entries(JSON.parse(u.body).state).map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td></td></tr>`).join('')}</table>` +
+    `<h3>piloting instructions given to the model (variant ${esc(d.variant)})</h3>${Object.entries(JSON.parse(u.body).questions).map(([q, v]) => `<div class="meta"><b>${esc(q)}</b> (${esc(v.type)}): ${esc(v.instructions)}</div><table class="ex">${Object.entries(v.criteria).map(([a, b]) => `<tr><td>${esc(a)}</td><td colspan=2>${esc(b)}</td></tr>`).join('')}</table>`).join('')}`) +
+   `<h3>(c) exact body POSTed to ${esc(u.url)} (${u.body.length} bytes)</h3><pre>${esc(JSON.stringify(JSON.parse(u.body), null, 2))}</pre><details><summary>as sent (one line, byte-exact)</summary><pre>${esc(u.body)}</pre></details>` +
+   `<h3>(d) raw Ollama response</h3><pre>${esc(u.rawResponse)}</pre>`; }
+function renderRivalHow(k) { const d = k.res, pc = d.upstream.calls.find(c => c.name.startsWith('persona') && !c.skipped);
+  $('rhowBody').innerHTML = `<div class="meta">rival · personality <b style="color:#f4f">${esc(d.persona)}</b> · call #${k.id} · ${d.ms} ms · ${d.usage.calls} sub-calls</div>` +
+    `<div class="meta"><b>MODEL</b> answers every yes/no fact. The personality is ONLY the state text of the persona_* choice calls; the model picks its own speed limits, which are copied into later questions; code never reads the personality. <b>CODE</b> only maps answers with this fixed table:</div>` +
+    `<table class="ex">${d.table.map(t => `<tr><td colspan=3>${esc(t)}</td></tr>`).join('')}</table>` +
+    (pc ? `<div class="meta">personality text (the only state of the 3 persona_* calls):</div><pre>${esc(pc.request.state.personality)}</pre><div class="meta">model-chosen limits: fall ≤ ${d.answers.persona_hi} m/s high, ≤ ${d.answers.persona_lo} m/s below 20 m, sideways ≤ ${d.answers.persona_side} m/s</div>` : '') +
+    `<div class="meta">answers: ${esc(JSON.stringify(Object.fromEntries(Object.entries(d.answers).filter(([a]) => !a.endsWith('_p')))))} → <b style="color:${COL[d.action]}">${d.action}</b></div>` + subCallsHTML(d, false); }
+function rivalApply(k, d, mk) { renderRivalHow(k); RV.dec = d; d.appliedSimT = RV.s.t; k.status = 'done'; k.appliedT = RV.s.t; RV.appliedId = k.id; mk.action = d.action; mk.ax = RV.s.x; mk.ay = RV.s.y; RV.flash = 1; RV.n++; RV.sum += d.ms; RV.lastMs = d.ms; RV.lastCalls = d.usage?.calls; }
+async function askRival() {
+  if (!RV.on || paused || RV.inflight || RV.s.outcome) return;
+  const my = gen, k = { rival: true, persona: RV.persona, id: ++callNo, wall: new Date().toLocaleTimeString([], { hour12: false }) + '.' + String(Date.now() % 1000).padStart(3, '0'), sentT: RV.s.t, sent: { ...RV.s }, status: 'pending', t0: performance.now() };
+  const mk = { x: RV.s.x, y: RV.s.y, id: k.id, action: null }; RV.marks.push(mk); if (RV.marks.length > 120) RV.marks.shift();
+  RV.inflight = k; calls.push(k); if (calls.length > 50) calls.shift(); renderLog();
+  try { const r = await fetch('/decide', { method: 'POST', body: JSON.stringify({ sim: RV.s, variant: 'rival', persona: RV.persona, model: opts.model, host: opts.host }) }); const d = await r.json(); if (d.error) throw d.error;
+    k.res = d; if (my !== gen) k.status = 'stale'; else if (paused) { k.status = 'held'; RV.held = { k, d, mk }; } else rivalApply(k, d, mk);
+  } catch (e) { k.status = 'error'; k.err = String(e); }
+  if (RV.inflight === k) RV.inflight = null; renderLog();
+}
+async function ask() {
+  if (!ai || paused || inflight || s.outcome) return;
+  const my = gen, k = { id: ++callNo, wall: new Date().toLocaleTimeString([], { hour12: false }) + '.' + String(Date.now() % 1000).padStart(3, '0'), sentT: s.t, sent: { ...s }, status: 'pending', t0: performance.now() };
+  const mk = { x: s.x, y: s.y, id: k.id, action: null }; marks.push(mk); if (marks.length > 120) marks.shift();
+  inflight = k; calls.push(k); if (calls.length > 50) calls.shift(); renderLog();
+  try { const r = await fetch('/decide', { method: 'POST', body: JSON.stringify({ sim: s, ...opts }) }); const d = await r.json(); if (d.error) throw d.error;
+    k.res = d;
+    if (my !== gen) k.status = 'stale'; else if (paused) { k.status = 'held'; held = { k, d, mk }; } else apply(k, d, mk);
+    renderHow(k);
+  } catch (e) { k.status = 'error'; k.err = String(e); }
+  if (inflight === k) inflight = null; renderLog();
+}
+const sg1 = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1), deg = a => sg1(a * 180 / Math.PI).replace('.0', '') + '°';
+const row = (...kv) => `<div class="r">${kv.map(([k, v]) => `<span><span class="k">${k}</span> <span class="v">${v}</span></span>`).join('')}</div>`;
+const fuelBar = (f, col) => `<span class="fb"><i style="width:${Math.max(0, f)}%;background:${f < 20 ? '#f44' : col}"></i></span>${f.toFixed(0)}%`;
+const shipRows = (x, col) => row(['alt', (x.y - PAD.y).toFixed(1) + ' m'], ['vy', sg1(x.vy) + ' m/s'], ['vx', sg1(x.vx) + ' m/s']) + row(['tilt', deg(x.angle)], ['fuel', fuelBar(x.fuel, col)]);
+function hudHTML(now, burning, pulseLeft, rate) {
+  let h = `<div class="g">SHIP · t ${s.t.toFixed(1)} s · ${opts.timeScale}×${paused ? ' · PAUSED' : ''}</div>` + shipRows(s, '#0f8');
+  h += `<div class="g">PILOT · ${ai ? `AI ${esc(opts.model || 'tev1:4b')} @ ${esc(opts.host || 'primary')} · ${opts.mode === 'physics' ? esc(opts.variant) : 'hints'}` : 'MANUAL (arrows)'}</div>`;
+  h += row(['action', ai ? (dec.action ?? '-') : '-'], ['engine', burning ? `<span class="on">${dec.throttle ? dec.throttle.toUpperCase() : 'ON'}${pulseLeft != null ? ' ' + pulseLeft.toFixed(1) + ' s' : ''}</span>` : 'off']);
+  if (ai) h += row(['last', lastGap ? `${lastGap.ms} ms · ${lastGap.calls} call${lastGap.calls > 1 ? 's' : ''}` : '-'], ['lag', lastGap ? lastGap.dt.toFixed(1) + ' s' : '-']) +
+    row(['now', inflight ? `calling ${Math.round(now - inflight.t0)} ms` : s.outcome ? 'done' : 'idle'], ['avg', n ? (sum / n).toFixed(0) + ' ms' : '-'], ['rate', rate + '/s']);
+  if (RV.on) h += `<div class="g rv">RIVAL · ${esc(RV.persona)}</div>` + shipRows(RV.s, '#f4f') +
+    row(['action', RV.dec.action ?? '-'], ['last', RV.lastMs != null ? `${RV.lastMs} ms · ${RV.lastCalls} calls` : '-']) + row(['now', RV.inflight ? `calling ${Math.round(now - RV.inflight.t0)} ms` : RV.s.outcome ? 'done' : 'idle'], ['avg', RV.n ? (RV.sum / RV.n).toFixed(0) + ' ms' : '-']);
+  return h + '<div class="k" style="margin-top:4px;font-size:11px">? = keys &amp; legend</div>'; }
+let last = performance.now(), cw = 0, ch = 0;
+function frame(now) {
+  const dt = paused ? 0 : Math.min(0.05, (now - last) / 1000) * (opts.timeScale || 1); last = now; ask();
+  const thrust = ai ? ((dec.pulse == null || s.t - (dec.appliedSimT ?? 0) < dec.pulse) ? dec.thrust : false) : !!keys.ArrowUp, tilt = ai ? dec.tilt : keys.ArrowLeft ? 'left' : keys.ArrowRight ? 'right' : 'center';
+  if (!paused) step(s, dt, thrust, tilt);
+  if (s.outcome && s.outcomeT == null) s.outcomeT = s.t;
+  let rThrust = false; if (RV.on) { askRival(); rThrust = RV.dec.thrust && (RV.dec.pulse == null || RV.s.t - (RV.dec.appliedSimT ?? 0) < RV.dec.pulse);
+    if (!paused) step(RV.s, dt, rThrust, RV.dec.tilt); if (RV.s.outcome && RV.s.outcomeT == null) RV.s.outcomeT = RV.s.t; }
+  const r = c.getBoundingClientRect(); if (r.width !== cw || r.height !== ch) { cw = c.width = r.width; ch = c.height = r.height; }
+  g.clearRect(0, 0, cw, ch);
+  const k = cw / W, sy = y => ch - y * Math.min(k, ch / 140), sx = x => x * k;
+  g.strokeStyle = '#888'; g.beginPath(); for (let x = 0; x <= W; x++) g.lineTo(sx(x), sy(terrainY(x))); g.stroke();
+  g.strokeStyle = '#ff0'; g.lineWidth = 4; g.beginPath(); g.moveTo(sx(PAD.x0), sy(PAD.y)); g.lineTo(sx(PAD.x1), sy(PAD.y)); g.stroke(); g.lineWidth = 1;
+  // call markers: hollow ring = where request was sent, filled dot = where result applied, line = latency gap
+  if (showMarks) for (const m of marks) { const col = COL[m.action] || '#ff0', a = m.id === appliedId ? 1 : 0.55; g.globalAlpha = a;
+    g.strokeStyle = col; g.beginPath(); g.arc(sx(m.x), sy(m.y), 3.5, 0, 7); g.stroke();
+    if (m.ax != null) { g.beginPath(); g.moveTo(sx(m.x), sy(m.y)); g.lineTo(sx(m.ax), sy(m.ay)); g.stroke(); g.fillStyle = col; g.beginPath(); g.arc(sx(m.ax), sy(m.ay), 2.5, 0, 7); g.fill(); } }
+  g.globalAlpha = 1;
+  if (inflight && showMarks) { const m = marks[marks.length - 1]; g.strokeStyle = '#ff0'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(sx(m.x), sy(m.y)); g.lineTo(sx(s.x), sy(s.y)); g.stroke(); g.setLineDash([]); }
+  if (inflight) { const el = logEl.querySelector('.el'); if (el) el.textContent = Math.round(now - inflight.t0); }
+  if (RV.on) { // rival markers + ship (magenta)
+    if (showMarks) for (const m of RV.marks) { g.globalAlpha = m.id === RV.appliedId ? 1 : 0.45; g.strokeStyle = RCOL; g.beginPath(); g.arc(sx(m.x), sy(m.y), 3, 0, 7); g.stroke();
+      if (m.ax != null) { g.beginPath(); g.moveTo(sx(m.x), sy(m.y)); g.lineTo(sx(m.ax), sy(m.ay)); g.stroke(); g.fillStyle = RCOL; g.beginPath(); g.arc(sx(m.ax), sy(m.ay), 2, 0, 7); g.fill(); } }
+    g.globalAlpha = 1; g.save(); g.translate(sx(RV.s.x), sy(RV.s.y)); g.rotate(RV.s.angle);
+    if (RV.flash > 0) { g.shadowColor = RCOL; g.shadowBlur = 25 * RV.flash; g.strokeStyle = RCOL; g.lineWidth = 2; g.strokeRect(-9, -17, 18, 20); g.lineWidth = 1; RV.flash = Math.max(0, RV.flash - dt * 3); }
+    g.fillStyle = RCOL; g.fillRect(-6, -14, 12, 14); g.shadowBlur = 0;
+    if (rThrust && RV.s.fuel > 0 && !RV.s.outcome) { g.fillStyle = '#f8f'; g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0); g.lineTo(0, 12 + Math.random() * 6); g.fill(); }
+    g.restore(); g.fillStyle = RCOL; g.font = '11px monospace'; g.fillText('RIVAL ' + RV.persona, sx(RV.s.x) + 9, sy(RV.s.y) - 16); g.fillStyle = PCOL; g.fillText(ai ? 'YOU (AI)' : 'YOU', sx(s.x) + 9, sy(s.y) - 16); }
+  g.save(); g.translate(sx(s.x), sy(s.y)); g.rotate(s.angle);
+  if (flash > 0) { g.shadowColor = COL[dec.action] || '#fff'; g.shadowBlur = 25 * flash; g.strokeStyle = COL[dec.action] || '#fff'; g.lineWidth = 2; g.strokeRect(-9, -17, 18, 20); g.lineWidth = 1; flash = Math.max(0, flash - dt * 3); }
+  g.fillStyle = '#ddd'; g.fillRect(-6, -14, 12, 14); g.shadowBlur = 0;
+  if (thrust && s.fuel > 0 && !s.outcome) { g.fillStyle = flash > 0.3 ? '#ff0' : '#f80'; g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0); g.lineTo(0, 12 + Math.random() * 6 + flash * 8); g.fill(); }
+  g.restore();
+  if (!firstWall && n > n0) firstWall = performance.now();
+  const burning = thrust && s.fuel > 0 && !s.outcome, pulseLeft = ai && dec.thrust && dec.pulse != null ? Math.max(0, dec.pulse - (s.t - (dec.appliedSimT ?? 0))) : null;
+  const rate = firstWall && n - n0 > 1 && !s.outcome ? ((n - n0 - 1) / ((performance.now() - firstWall) / 1000)).toFixed(1) : '-';
+  if (now - (hud._t || 0) > 100) { hud._t = now; hud.innerHTML = hudHTML(now, burning, pulseLeft, rate); }
+  if (RV.on) { const key = (s.outcome || '') + '|' + (RV.s.outcome || '');
+    if ((s.outcome || RV.s.outcome) && shownOutcome !== key) { shownOutcome = key; const o = $('outcome'), both = s.outcome && RV.s.outcome;
+      const line = (who, x) => !x.outcome ? `${who}: still flying…` : x.outcome === 'LANDED' ? `${who}: LANDED · ${x.score.toFixed(1)} at t=${x.outcomeT.toFixed(1)}s (${Object.entries(x.scoreBreakdown).map(([k, v]) => `${k.replace('_', ' ')} ${v > 0 ? '+' : ''}${v.toFixed(1)}`).join(', ')})` : `${who}: CRASHED · ${x.outcome.replace(/^crash \(|\)$/g, '')}`;
+      let head = s.outcome ? `YOU ${s.outcome === 'LANDED' ? 'LANDED' : 'CRASHED'} · RIVAL STILL FLYING` : `RIVAL ${RV.s.outcome === 'LANDED' ? 'LANDED' : 'CRASHED'} · YOU'RE STILL FLYING`; if (both) { const pl = s.outcome === 'LANDED', rl = RV.s.outcome === 'LANDED';
+        const win = pl && rl ? (s.outcomeT < RV.s.outcomeT ? 'player' : s.outcomeT > RV.s.outcomeT ? 'rival' : (s.score >= RV.s.score ? 'player' : 'rival')) : pl ? 'player' : rl ? 'rival' : null;
+        head = win === 'player' ? 'YOU WIN' : win === 'rival' ? 'RIVAL WINS' : 'BOTH CRASHED';
+        if (!race) { race = win; const b = board[boardKey()] ||= { player: { wins: 0, landed: 0, races: 0, scoreSum: 0 }, rival: { wins: 0, landed: 0, races: 0, scoreSum: 0 } };
+          for (const [w, x] of [['player', s], ['rival', RV.s]]) { b[w].races++; b[w].landed += x.outcome === 'LANDED'; b[w].scoreSum += x.score ?? 0; if (win === w) b[w].wins++; }
+          localStorage.setItem('lander.board', JSON.stringify(board)); drawBoard(); } }
+      o.className = 'show ' + (head.includes('FLYING') ? 'part ' + (head.includes('LANDED') ? 'win' : 'lose') : head === 'YOU WIN' ? 'win' : 'lose');
+      o.innerHTML = `<div class="big">${head}</div><div class="sub">${esc(line('YOU', s))}\n${esc(line('RIVAL ' + RV.persona, RV.s))}\nfirst to land wins (score breaks ties) · press R for a new race</div>`; } }
+  else if (s.outcome && shownOutcome !== s.outcome) { shownOutcome = s.outcome; const o = $('outcome'), win = s.outcome === 'LANDED';
+    o.className = 'show ' + (win ? 'win' : 'lose');
+    o.innerHTML = win ? `<div class="big">LANDED · ${s.score.toFixed(1)}</div><div class="sub">${Object.entries(s.scoreBreakdown).map(([k, v]) => `${k.replace('_', ' ')} ${v > 0 ? '+' : ''}${v.toFixed(1)}`).join('   ')}\nlimits: |vy|<4  |vx|<2  tilt<0.30 rad · press R to reset</div>`
+      : `<div class="big">CRASHED</div><div class="sub">${esc(s.outcome.replace(/^crash \(|\)$/g, ''))}\nscore 0.0 · press R to reset</div>`; }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

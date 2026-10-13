@@ -1,10 +1,10 @@
 import './env.mjs';
 import { hostTable, send } from './providers/index.mjs';
-import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
-import { payloadFor, ACTIONS, explain, PHYS_VARIANTS, isHybrid, modelState, factsToSteer, MULTI, MULTI_TABLE, multiMap, multiThrust, MULTI2, MULTI2_TABLE, multi2Map, multi2Thrust, PULSE_S, rivalList, RIVAL_TABLE, rivalMap, rivalThrust, PERSONAS, SCENE_VARIANTS, SCENE_T, scenePayload, sceneRead, SCENE_MISSION } from './sim.mjs';
+import { ACTIONS, DATA_Q, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
+import { proseSet, perceive, proseMap, PROSE_TABLE } from './prose.mjs';
 import { POLICY_Q, POLICY_TABLE, policyMap, policyNames, policyText, shipJSON } from './policy.mjs';
 import { examples } from './examples.mjs';
-import { criteriaNames, criteriaSet, perceive, criteriaMap, CRITERIA_TABLE } from './criteria.mjs';
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const HOST = process.env.HOST || '0.0.0.0', PORT = +process.env.PORT || 8787, MODEL = process.env.MODEL || 'tev1:4b', OLLAMA_FORCE = process.env.OLLAMA; // test override (mock): forces every call to this URL
 // Hosts/providers come from env (.env): see providers/index.mjs and .env.example.
@@ -22,93 +22,57 @@ async function post(hostKey, body) {
   try { return { ...(await send(h, body, AbortSignal.timeout(20000))), url: h.url, fellBack: false }; }
   catch (e) { if (!alt) throw e; downUntil[key] = Date.now() + 30000; return { ...(await send(alt, body)), url: alt.url, fellBack: String(e.cause?.code || e.name) }; }
 }
-export const DEFAULTS = { mode: process.env.MODE || 'physics', variant: process.env.VARIANT || 'multi2', model: MODEL, host: DEFAULT_HOST, hosts: HOSTS, hostLabels: HOST_LABELS, timeScale: +(process.env.TIME_SCALE || 1) };
-const PCACHE = {}; // personality answers: asked from the model once per (model, personality), then reused
-async function decideMulti(s, model, t0, hostKey, v2 = false, persona = null) {
-  const LIST = persona ? rivalList(persona) : v2 ? MULTI2 : MULTI;
+// Modes (ids are what /decide, headless VARIANT and .env VARIANT take).
+export const MODES = () => [
+  { id: 'prose', label: 'Prose input (choice questions)' },
+  { id: 'data', label: 'Data input (yes/no fact checks)' },
+  ...policyNames().map(n => ({ id: 'policy:' + n, label: `Policy (plain-English rules): ${n}` })),
+];
+const modeId = v => MODES().some(m => m.id === v) ? v : 'prose';
+export const DEFAULTS = { variant: modeId(process.env.VARIANT), model: MODEL, host: DEFAULT_HOST, hosts: HOSTS, hostLabels: HOST_LABELS, timeScale: +(process.env.TIME_SCALE || 1) };
+const KEEP = '2h';
+const probsFor = (thrust, tilt) => Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b === !!thrust ? 1 : 0) * (t === tilt ? 1 : 0)]));
+async function call(hostKey, request) { const body = JSON.stringify(request), c0 = performance.now(), P = await post(hostKey, body), r = P.r;
+  if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`); const raw = await r.text();
+  return { body, request, raw, j: JSON.parse(raw), url: P.url, fellBack: P.fellBack, ms: Math.round(performance.now() - c0) }; }
+// PROSE: one call; state = perception sentences; questions from lander/modes/prose.json.
+async function decideProse(s, model, t0, opt) {
+  const set = proseSet(), C = await call(opt.host, { model, state: perceive(s, set), questions: set.questions, keep_alive: KEEP }), A = C.j.answers || {}, M = proseMap(A, s), thrust = M.throttle > 0 ? M.throttle : false;
+  return { variant: 'prose', model, thrust, tilt: M.tilt, action: (thrust ? 'burn_' : 'coast_') + M.tilt, throttle: Math.round(M.throttle * 100) + '%', tvx: M.tvx, answers: A, table: PROSE_TABLE,
+    probs: probsFor(thrust, M.tilt), usage: C.j.usage, ms: Math.round(performance.now() - t0), fellBack: C.fellBack, upstream: { url: C.url, body: C.body, request: C.request, rawResponse: C.raw, response: C.j }, simState: s };
+}
+// DATA: a chain of tiny yes/no fact calls (neutral key "q"), later ones skipped when earlier answers decide.
+async function decideData(s, model, t0, opt) {
   const ans = {}, calls = []; let url, fellBack = false;
-  for (const m of LIST) {
+  for (const m of DATA_Q) {
     if (m.skipIf && m.skipIf(ans)) { calls.push({ name: m.name, skipped: true }); continue; }
-    const ck = persona && m.name.startsWith('persona_') ? `${model}|${persona}|${m.name}` : null;
-    if (ck && PCACHE[ck]) { Object.assign(ans, PCACHE[ck].ans); calls.push({ ...PCACHE[ck].call, cached: true, ms: 0, usage: { input_tokens: 0, output_tokens: 0 } }); continue; }
-    const Q = typeof m.q === 'function' ? m.q(ans) : m.q;
-    const request = { model, state: m.state(s), questions: { q: Q }, keep_alive: '30m' }, body = JSON.stringify(request), c0 = performance.now();
-    const P = await post(hostKey, body), r = P.r; url = P.url; fellBack = fellBack || P.fellBack;
-    if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
-    const raw = await r.text(), j = JSON.parse(raw), A = j.answers?.q ?? {};
-    const p = m.readP ? m.readP(A) : m.read ? (A.probabilities?.touching_down ?? (m.read(A) ? 1 : 0)) : A.noul ?? 0; ans[m.name] = m.read ? m.read(A) : p > 0.5; if (m.name.startsWith('persona_')) ans[m.name] = +ans[m.name]; ans[m.name + '_p'] = p;
-    calls.push({ name: m.name, body, sentUpstream: P.sent !== body ? P.sent : undefined, request, rawResponse: raw, response: j, p, answer: ans[m.name], usage: j.usage, ms: Math.round(performance.now() - c0) });
-    if (ck) PCACHE[ck] = { ans: { [m.name]: ans[m.name], [m.name + '_p']: p }, call: calls[calls.length - 1] };
+    const C = await call(opt.host, { model, state: m.state(s), questions: { q: m.q }, keep_alive: KEEP }), A = C.j.answers?.q ?? {}; url = C.url; fellBack = fellBack || C.fellBack;
+    const p = m.read ? (A.probabilities?.touching_down ?? (m.read(A) ? 1 : 0)) : A.noul ?? 0; ans[m.name] = m.read ? m.read(A) : p > 0.5; ans[m.name + '_p'] = p;
+    calls.push({ name: m.name, body: C.body, request: C.request, rawResponse: C.raw, response: C.j, p, answer: ans[m.name], usage: C.j.usage, ms: C.ms });
   }
-  const tilt = persona ? rivalMap(ans) : v2 ? multi2Map(ans) : multiMap(ans), thrust = persona ? rivalThrust(ans) : v2 ? multi2Thrust(ans) : multiThrust(ans), pThrust = thrust ? 1 : 0, c = (thrust ? 'burn_' : 'coast_') + tilt;
-  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? pThrust : 1 - pThrust) * (t === tilt ? 1 : 0)]));
-  const done = calls.filter(x => !x.skipped && !x.cached), usage = { input_tokens: done.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: done.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: done.length };
-  const first = done[0];
-  return { thrustBy: 'model', mode: 'physics', variant: persona ? 'rival' : v2 ? (v2 === 'p' ? 'multi2p' : 'multi2') : 'multi', persona, pulse: v2 === 'p' ? PULSE_S : null, model, thrust, pThrust, tilt, action: c, probs: pr, usage, ms: Math.round(performance.now() - t0), answers: ans, table: persona ? RIVAL_TABLE : v2 ? (v2 === 'p' ? [...MULTI2_TABLE, `burn pulse (game mechanic): engine fires at most ${PULSE_S} s sim time per decision, then coasts`] : MULTI2_TABLE) : MULTI_TABLE,
-    fellBack, upstream: { url, multi: true, calls, body: first.body, request: { model, state: Object.assign({}, ...done.map(x => x.request.state)), questions: Object.fromEntries(done.map(x => [x.name, x.request.questions.q])), keep_alive: '30m' }, rawResponse: done.map(x => x.rawResponse).join('\n'), response: done.map(x => x.response) }, simState: s, explain: null };
+  const tilt = dataMap(ans), thrust = dataThrust(ans), done = calls.filter(x => !x.skipped);
+  const usage = { input_tokens: done.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: done.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: done.length };
+  return { variant: 'data', model, thrust, tilt, action: (thrust ? 'burn_' : 'coast_') + tilt, answers: ans, table: DATA_TABLE, probs: probsFor(thrust, tilt), usage, ms: Math.round(performance.now() - t0),
+    fellBack, upstream: { url, multi: true, calls, body: done[0].body }, simState: s };
 }
-// Scene mode: one call per decision; prose state; the model picks controls; code maps names → inputs.
-// History (for s3) is kept per track ('player' / 'rival'); it resets when sim time goes backwards (new flight).
-const HIST = {};
-async function decideScene(s, model, t0, opt) {
-  const tr = opt.track || 'player', H = HIST[tr] && HIST[tr].t <= s.t ? HIST[tr] : (HIST[tr] = { t: s.t, list: [] });
-  const hist = H.list.map(h => ({ ...h, ago: s.t - h.t })), last = H.list[H.list.length - 1];
-  const request = { model, ...scenePayload(s, opt.variant, hist, !!last && last.ctrl.startsWith('on'), last && last.throttle ? { throttle: last.throttle, tilt: last.tilt } : null), keep_alive: '30m' }, body = JSON.stringify(request);
-  const P = await post(opt.host, body), r = P.r; if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`);
-  const raw = await r.text(), j = JSON.parse(raw), R = sceneRead(opt.variant, j.answers || {});
-  H.t = s.t; H.list.push({ t: s.t, s: { ...s }, ctrl: R.ctrl, throttle: R.throttle, tilt: R.tilt }); if (H.list.length > 3) H.list.shift();
-  const c = (R.thrust ? 'burn_' : 'coast_') + R.tilt, tp = R.tiltP; // 6-way view for the panel; throttle level is in R.throttle
-  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? R.pThrust : 1 - R.pThrust) * (tp[t] ?? (t === R.tilt ? 1 : 0))]));
-  return { thrustBy: 'model', mode: 'physics', variant: opt.variant, scene: true, model, thrust: R.thrust, pThrust: R.pThrust, tilt: R.tilt, action: c, ctrl: R.ctrl, throttle: R.throttle, throttleP: R.throttleP, probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0),
-    fellBack: P.fellBack, upstream: { url: P.url, body, sentUpstream: P.sent !== body ? P.sent : undefined, request, rawResponse: raw, response: j }, simState: s, explain: null }; }
-// Policy mode: 4 noul calls judging the ship against a plain-English policy file; graded probabilities → throttle/steer (POLICY_TABLE).
-async function decidePolicy(s, model, t0, opt) {
-  const name = policyNames().includes(opt.policy) ? opt.policy : 'careful', policy = policyText(name), ship = shipJSON(s), ans = {}, calls = []; let url, fellBack = false;
+// POLICY: 4 judgment calls against a plain-English policy file; graded probabilities → throttle/steer.
+async function decidePolicy(s, model, t0, opt, name) {
+  const policy = policyText(name), ship = shipJSON(s), ans = {}, calls = []; let url, fellBack = false;
   for (const m of POLICY_Q) {
-    const request = { model, state: { policy, ship }, questions: { q: m.q }, keep_alive: '2h' }, body = JSON.stringify(request), c0 = performance.now();
-    const P = await post(opt.host, body), r = P.r; url = P.url; fellBack = fellBack || P.fellBack;
-    if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
-    const raw = await r.text(), j = JSON.parse(raw), A = j.answers?.q ?? {}, p = A.noul ?? 0;
+    const C = await call(opt.host, { model, state: { policy, ship }, questions: { q: m.q }, keep_alive: KEEP }), p = C.j.answers?.q?.noul ?? 0; url = C.url; fellBack = fellBack || C.fellBack;
     ans[m.name] = p > 0.5; ans[m.name + '_p'] = Math.round(p * 1000) / 1000;
-    calls.push({ name: m.name, body, request, rawResponse: raw, response: j, p, answer: `${ans[m.name]} (p=${p.toFixed(2)})`, usage: j.usage, ms: Math.round(performance.now() - c0) });
+    calls.push({ name: m.name, body: C.body, request: C.request, rawResponse: C.raw, response: C.j, p, answer: ans[m.name], usage: C.j.usage, ms: C.ms });
   }
-  const { throttle, tilt } = policyMap(ans, s), thrust = throttle > 0 ? throttle : false, c = (thrust ? 'burn_' : 'coast_') + tilt;
-  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? (thrust ? 1 : 0) : (thrust ? 0 : 1)) * (t === tilt ? 1 : 0)]));
+  const { throttle, tilt } = policyMap(ans, s), thrust = throttle > 0 ? throttle : false;
   const usage = { input_tokens: calls.reduce((a, x) => a + (x.usage?.input_tokens || 0), 0), output_tokens: calls.reduce((a, x) => a + (x.usage?.output_tokens || 0), 0), calls: calls.length };
-  return { thrustBy: 'model', mode: 'physics', variant: 'policy:' + name, policy: name, policyText: policy, model, thrust, pThrust: throttle, throttle: Math.round(throttle * 100) + '%', tilt, action: c, probs: pr, usage, ms: Math.round(performance.now() - t0), answers: ans, table: POLICY_TABLE,
-    fellBack, upstream: { url, multi: true, calls, body: calls[0].body, request: { model, state: { policy, ship }, questions: Object.fromEntries(POLICY_Q.map(m => [m.name, m.q])), keep_alive: '2h' }, rawResponse: calls.map(x => x.rawResponse).join('\n'), response: calls.map(x => x.response) }, simState: s, explain: null };
-}
-// Criteria mode: perception prose (bands) + choice questions from lander/criteria/<name>.json, ONE call per decision.
-async function decideCriteria(s, model, t0, opt, name) {
-  const set = criteriaSet(name), state = perceive(s, set), request = { model, state, questions: set.questions, keep_alive: '2h' }, body = JSON.stringify(request);
-  const P = await post(opt.host, body), r = P.r; if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`);
-  const raw = await r.text(), j = JSON.parse(raw), A = j.answers || {}, M = criteriaMap(A, s), thrust = M.throttle > 0 ? M.throttle : false, c = (thrust ? 'burn_' : 'coast_') + M.tilt;
-  const pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? (thrust ? 1 : 0) : (thrust ? 0 : 1)) * (t === M.tilt ? 1 : 0)]));
-  return { thrustBy: 'model', mode: 'physics', variant: 'criteria:' + name, scene: true, model, thrust, pThrust: M.throttle, tilt: M.tilt, action: c, ctrl: Object.entries(A).map(([k, a]) => k + '=' + a.choice).join(' '), throttle: Math.round(M.throttle * 100) + '%', throttleP: A.downward_thrust_magnitude?.probabilities, tvx: M.tvx, table: CRITERIA_TABLE,
-    probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0), fellBack: P.fellBack, upstream: { url: P.url, body, request, rawResponse: raw, response: j }, simState: s, explain: null };
+  return { variant: 'policy:' + name, policy: name, policyText: policy, model, thrust, tilt, action: (thrust ? 'burn_' : 'coast_') + tilt, throttle: Math.round(throttle * 100) + '%', answers: ans, table: POLICY_TABLE,
+    probs: probsFor(thrust, tilt), usage, ms: Math.round(performance.now() - t0), fellBack, upstream: { url, multi: true, calls, body: calls[0].body }, simState: s };
 }
 export async function decide(s, opt = {}) {
-  if (String(opt.variant).startsWith('criteria:')) return decideCriteria(s, opt.model || MODEL, performance.now(), opt, opt.variant.slice(9));
-  if (opt.variant === 'policy' || String(opt.variant).startsWith('policy:')) return decidePolicy(s, opt.model || MODEL, performance.now(), { ...opt, policy: String(opt.variant).startsWith('policy:') ? opt.variant.slice(7) : opt.policy });
-  if (SCENE_VARIANTS.includes(opt.variant) || SCENE_T.includes(opt.variant)) return decideScene(s, opt.model || MODEL, performance.now(), opt);
-  const mode = opt.mode === 'hints' ? 'hints' : 'physics', variant = PHYS_VARIANTS[opt.variant] ? opt.variant : DEFAULTS.variant, model = opt.model || MODEL;
-  const t0 = performance.now();
-  if (opt.variant === 'rival') return decideMulti(s, model, t0, opt.host, true, PERSONAS[opt.persona] ? opt.persona : 'careful');
-  if (mode === 'physics' && ['multi', 'multi2', 'multi2p'].includes(variant)) return decideMulti(s, model, t0, opt.host, variant === 'multi2p' ? 'p' : variant === 'multi2');
-  const request = { model, ...payloadFor(s, mode, variant), keep_alive: '30m' };
-  const body = JSON.stringify(request); // exact bytes sent upstream
-  const P = await post(opt.host, body), r = P.r;
-  if (!r.ok) throw new Error(`ollama ${r.status}: ${await r.text()}`);
-  const raw = await r.text(), j = JSON.parse(raw), a = j.answers || {};
-  let c, pr, thrust, tilt, pThrust;
-  if (a.act) { c = a.act.choice in ACTIONS ? a.act.choice : 'coast_center'; [thrust, tilt] = ACTIONS[c]; pr = a.act.probabilities ?? {};
-    pThrust = (pr.burn_left ?? 0) + (pr.burn_center ?? 0) + (pr.burn_right ?? 0);
-  } else { // two-question form: combine noul thrust x tilt choice into the same 6-way view
-    const hyb = mode === 'physics' && isHybrid(variant); pThrust = hyb ? (modelState(s).engine === 'burn' ? 1 : 0) : a.thrust?.noul ?? 0; thrust = pThrust > 0.5; tilt = a.pad_right ? factsToSteer(a.pad_right.noul > .5, a.moving_right.noul > .5, a.too_fast.noul > .5, s.vx === 0) : ['left', 'center', 'right'].includes(a.tilt?.choice) ? a.tilt.choice : 'center';
-    c = (thrust ? 'burn_' : 'coast_') + tilt; const tp = a.tilt?.probabilities ?? { [tilt]: 1 };
-    pr = Object.fromEntries(Object.entries(ACTIONS).map(([k, [b, t]]) => [k, (b ? pThrust : 1 - pThrust) * (tp[t] ?? 0)])); }
-  return { thrustBy: mode === 'physics' && isHybrid(variant) ? 'code (descent rule)' : 'model', mode, variant, model, thrust, pThrust, tilt, action: c, probs: pr, usage: j.usage, ms: Math.round(performance.now() - t0),
-    fellBack: P.fellBack, upstream: { url: P.url, body, request, rawResponse: raw, response: j }, simState: s, explain: mode === 'hints' ? explain(s) : null };
+  const v = modeId(opt.variant || DEFAULTS.variant), model = opt.model || MODEL, t0 = performance.now();
+  if (v === 'data') return decideData(s, model, t0, opt);
+  if (v.startsWith('policy:')) return decidePolicy(s, model, t0, opt, v.slice(7));
+  return decideProse(s, model, t0, opt);
 }
 // ---- Playground proxy: validate a /v1/systemone body, forward to the chosen host, return timing + raw text ----
 export function validateBody(b) {
@@ -140,23 +104,19 @@ async function models(hostKey) { const h = HT[hk(hostKey)]; if (h.kind !== 'olla
   const base = h.url.replace(/\/v1\/systemone$/, ''); const r = await fetch(base + '/api/tags', { signal: AbortSignal.timeout(5000) }); const j = await r.json();
   return { host: hk(hostKey), base, models: (j.models || []).map(m => ({ name: m.name, size: m.size, params: m.details?.parameter_size, quant: m.details?.quantization_level })) }; }
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const json = (res, code, o) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
+  const readBody = async (req, max = 256000) => { let b = ''; for await (const c of req) { b += c; if (b.length > max) throw Object.assign(new Error('body too large'), { code: 413 }); } return b; };
   http.createServer(async (req, res) => {
     try {
-      if (req.method === 'POST' && req.url === '/decide') {
-        let b = ''; for await (const c of req) b += c;
-        const q = JSON.parse(b), d = q.sim ? await decide(q.sim, q) : await decide(q);
-        res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(d));
-      }
-      if (req.method === 'POST' && req.url === '/api/systemone') {
-        let b = ''; for await (const c of req) { b += c; if (b.length > 256000) { res.writeHead(413); return res.end('{"error":"body too large"}'); } }
-        let q; try { q = JSON.parse(b); } catch { res.writeHead(400, { 'content-type': 'application/json' }); return res.end('{"error":"invalid JSON"}'); }
-        const o = await playground(q || {}); res.writeHead(o.status, { 'content-type': 'application/json' }); return res.end(JSON.stringify(o.json)); }
-      if (req.url.startsWith('/api/models')) { const k = new URL(req.url, 'http://x').searchParams.get('host'); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(await models(k))); }
-      if (req.url === '/api/examples') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(examples())); }
-      if (req.url === '/config') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ...DEFAULTS, variants: [...Object.keys(PHYS_VARIANTS), ...SCENE_VARIANTS, ...SCENE_T, ...policyNames().map(n => 'policy:' + n), ...criteriaNames().map(n => 'criteria:' + n)], personas: Object.keys(PERSONAS), policies: policyNames(), policyTexts: Object.fromEntries(policyNames().map(n => [n, policyText(n)])) })); }
-      const f = req.url === '/sim.mjs' ? 'sim.mjs' : req.url.split('?')[0].replace(/\/$/, '') === '/playground' ? 'playground.html' : 'index.html';
+      const url = req.url.split('?')[0];
+      if (req.method === 'POST' && url === '/decide') { const q = JSON.parse(await readBody(req)); if (!q.sim || typeof q.sim !== 'object') return json(res, 400, { error: 'sim required' }); return json(res, 200, await decide(q.sim, q)); }
+      if (req.method === 'POST' && url === '/api/systemone') { let q; try { q = JSON.parse(await readBody(req)); } catch (e) { return json(res, e.code || 400, { error: e.code ? e.message : 'invalid JSON' }); } const o = await playground(q || {}); return json(res, o.status, o.json); }
+      if (url === '/api/models') return json(res, 200, await models(new URL(req.url, 'http://x').searchParams.get('host')));
+      if (url === '/api/examples') return json(res, 200, examples());
+      if (url === '/config') return json(res, 200, { ...DEFAULTS, modes: MODES() });
+      const f = url === '/sim.mjs' ? 'sim.mjs' : url.replace(/\/$/, '') === '/playground' ? 'playground.html' : 'index.html';
       res.writeHead(200, { 'content-type': f.endsWith('.mjs') ? 'text/javascript' : 'text/html', 'cache-control': 'no-store' });
       res.end(fs.readFileSync(path.join(DIR, f)));
-    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: String(e) })); }
-  }).listen(PORT, HOST, () => console.log(`lander on http://${HOST}:${PORT} model=${MODEL}`));
+    } catch (e) { json(res, e.code === 413 ? 413 : 500, { error: String(e.message || e) }); }
+  }).listen(PORT, HOST, () => console.log(`lander on http://${HOST}:${PORT} model=${MODEL} mode=${DEFAULTS.variant}`));
 }

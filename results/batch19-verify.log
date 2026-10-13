@@ -1,0 +1,7 @@
+{"x":40} -> LANDED score=7.3 {"base":9,"fuel_bonus":0.5,"vertical":-1.7,"horizontal":-0.1,"tilt":0,"off_center":-0.4} t=45.0s fuel=46 decisions=179 avg=244ms maxfall=3.2 avgthr=0.40
+{"x":135,"vx":2} -> LANDED score=7.1 {"base":9,"fuel_bonus":0.5,"vertical":-1.6,"horizontal":-0.3,"tilt":0,"off_center":-0.5} t=45.3s fuel=46 decisions=179 avg=246ms maxfall=3.2 avgthr=0.39
+{"x":80,"vx":-3,"y":100} -> LANDED score=8.2 {"base":9,"fuel_bonus":0.5,"vertical":-1.2,"horizontal":-0.1,"tilt":0,"off_center":0} t=37.8s fuel=54 decisions=152 avg=243ms maxfall=3.2 avgthr=0.40
+{"x":20,"y":140} -> LANDED score=7.2 {"base":9,"fuel_bonus":0.4,"vertical":-1.7,"horizontal":-0.2,"tilt":0,"off_center":-0.3} t=53.5s fuel=36 decisions=215 avg=243ms maxfall=3.2 avgthr=0.39
+{"x":20,"vx":1.7} -> LANDED score=7.9 {"base":9,"fuel_bonus":0.5,"vertical":-1.2,"horizontal":-0.1,"tilt":0,"off_center":-0.3} t=45.9s fuel=45 decisions=186 avg=242ms maxfall=3.2 avgthr=0.40
+{"x":43,"vx":-1.2} -> LANDED score=7.6 {"base":9,"fuel_bonus":0.5,"vertical":-1.8,"horizontal":-0.1,"tilt":0,"off_center":0} t=45.3s fuel=46 decisions=185 avg=240ms maxfall=3.2 avgthr=0.40
+SUMMARY [primary] tev1:4b prose: TS=1 landed 6/6, avg latency 243 ms, n=1096, input_tokens 1462, agree-with-rule-oracle 9%, avg score 7.55, avg fuel left 46%

@@ -1,5 +1,5 @@
 {
-  "about": "Andrew's playground design, wording verbatim. One /v1/systemone call per decision with all questions; state = perception prose (pad sentence + altitude/descent sentence).",
+  "about": "Prose input + choice questions (designed in the playground; wording verbatim). One /v1/systemone call per decision with all questions; state = perception prose (pad sentence + altitude/descent sentence).",
   "perception": ["pad", "altitude"],
   "questions": {
     "flight_direction": { "type": "choice", "instructions": "Determine whether to fly to the right or to the left",

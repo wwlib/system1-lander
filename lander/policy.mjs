@@ -1,10 +1,10 @@
-// ---- POLICY pilot: the model judges the state against a plain-English policy text (lander/policies/*.txt). ----
+// ---- POLICY pilot: the model judges the state against a plain-English policy text (lander/modes/policies/*.txt). ----
 // Behavior is changed by editing the policy file, not code. Each decision = 4 tiny noul calls (key 'q'),
 // each with state = { policy, ship } where ship is a compact JSON of named fields.
 // Code only maps the answer PROBABILITIES (graded) to controls with POLICY_TABLE below.
 import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { PAD, G, THRUST } from './sim.mjs';
-const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'policies');
+const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'modes', 'policies');
 export const policyNames = () => fs.readdirSync(DIR).filter(f => f.endsWith('.txt')).map(f => f.slice(0, -4)).sort();
 export const policyText = n => fs.readFileSync(path.join(DIR, (policyNames().includes(n) ? n : 'careful') + '.txt'), 'utf8').trim();
 const r1 = v => Math.round(v * 10) / 10;
