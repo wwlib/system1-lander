@@ -75,6 +75,8 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log`
 
 ## Layout
 
+For where the model calls happen, see the [code walkthrough](docs/code-walkthrough.md).
+
 ```
 lander/server.mjs        HTTP server, the 3 modes, playground proxy (/api/systemone, /api/models, /api/examples)
 lander/sim.mjs           physics + data-mode questions (shared with the browser)
