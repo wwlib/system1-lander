@@ -20,7 +20,8 @@ pre{background:#000;padding:4px;white-space:pre-wrap;word-break:break-word;max-h
 <div id="err" class="err"></div>
 <div class="row" id="outs" style="align-items:flex-start"></div>
 <script>
-const $ = id => document.getElementById(id), esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+const REDACT = new URLSearchParams(location.search).has('redact'); // ?redact=1: mask IPv4 host addresses (for screenshots)
+const $ = id => document.getElementById(id), esc = s => (REDACT ? String(s).replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, 'gpu-host') : String(s)).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 let EX = [], cfg = {};
 const smode = () => document.querySelector('input[name=sm]:checked').value;
 function setState(st) { const t = typeof st === 'string'; document.querySelector(`input[name=sm][value=${t ? 'text' : 'json'}]`).checked = true; $('state').value = t ? st : JSON.stringify(st, null, 2); }
@@ -66,5 +67,6 @@ for (const r of document.querySelectorAll('input[name=sm]')) r.onchange = () => 
   $('ex').innerHTML = '<option value="">— pick an example —</option>' + groups.map(g => `<optgroup label="${esc(g)}">${EX.filter(e => e.group === g).map(e => `<option value="${esc(e.id)}">${esc(g)} · ${esc(e.name)}</option>`).join('')}</optgroup>`).join('');
   const cap = localStorage.getItem('pg.capture');
   if (cap && location.hash === '#capture') { const c = JSON.parse(cap); setState(c.body.state); $('qs').value = JSON.stringify(c.body.questions, null, 2); if (c.body.keep_alive) $('ka').value = c.body.keep_alive; $('exnote').textContent = 'captured from game: ' + (c.label || ''); if (c.host && cfg.hosts[c.host]) $('host').value = c.host; await loadModels(); if (c.body.model) $('mA').value = c.body.model; }
-  else { await loadModels(); $('ex').value = 'hello:hello.mjs'; load(EX[0]); } })();
+  else { await loadModels(); const U = new URLSearchParams(location.search), want = U.get('example'), e = EX.find(x => x.id === want) || EX.find(x => x.id === 'hello:hello.mjs') || EX[0]; $('ex').value = e.id; load(e);
+    if (U.get('model')) $('mA').value = U.get('model'); if (U.get('compare')) { $('cmp').checked = true; $('mB').value = U.get('compare'); } if (U.get('run') === '1') go(); } })();
 </script></body></html>

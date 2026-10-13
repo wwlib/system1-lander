@@ -2,7 +2,12 @@
 
 A lunar lander flown in real time by a small **System 1 decision model** through Ollama's `POST /v1/systemone`. The request is a `state` plus `questions` (`noul` yes/no, `choice`, `score`). The reply is the answers with their probabilities, from a single forward pass, with no text generation. Node ≥ 20, no dependencies.
 
-![screenshot](docs/screenshot.png)
+![Lander in prose mode: mid-descent, System 1 panel showing the prose sentences, choice probabilities and the code mapping](docs/screenshot-lander.png)
+
+<details><summary>Landing outcome</summary>
+
+![Landed 8.6](docs/screenshot-landed.png)
+</details>
 
 ## Run it
 
@@ -62,6 +67,9 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch17-policy.log` (poli
 - **Results:** probability bars, score, latency and tokens, and the raw request and response. Run N times to see variance, or compare two models side by side.
 - **Examples:** the three game modes, the original prose examples, hello.mjs, ticket triage and a tool-call safety check.
 - **From the game:** "open latest call in playground" loads the current call.
+- **URL params:** `?example=<id>&model=<name>&compare=<name>&run=1` loads and sends an example; `?redact=1` (game or playground) masks host IPs, for screenshots.
+
+![Playground: an original prose example on tev1:4b, choice probabilities as bars](docs/screenshot-playground.png)
 
 ## Using other providers
 
