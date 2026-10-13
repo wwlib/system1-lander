@@ -2,11 +2,11 @@
 
 A lunar lander flown in real time by a small **System 1 decision model** through Ollama's `POST /v1/systemone`. The request is a `state` plus `questions` (`noul` yes/no, `choice`, `score`). The reply is the answers with their probabilities, from a single forward pass, with no text generation. Node ≥ 20, no dependencies.
 
-![Lander in prose mode: mid-descent, System 1 panel showing the prose sentences, choice probabilities and the code mapping](docs/screenshot-lander.png)
+![Lander in prose mode after a random-start landing scored 7.9, with the System 1 panel showing the prose sentences, choice probabilities, code mapping and request](docs/screenshot-landed.png)
 
-<details><summary>Landing outcome</summary>
+<details><summary>Mid-descent</summary>
 
-![Landed 8.6](docs/screenshot-landed.png)
+![Lander mid-descent in prose mode](docs/screenshot-lander.png)
 </details>
 
 ## Run it
