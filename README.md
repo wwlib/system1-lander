@@ -41,7 +41,7 @@ Headless, 1× time scale (decisions apply after their real latency), 6 starts pe
 
 Random starts: x 15–185 m, altitude 50–140 m above the pad, vx ±3 m/s, vy −4…+1 m/s, tilt ±0.15 rad, full fuel (`randomStart(seed)` in `sim.mjs`). In the game, tick **Random start** or use `?random=1` / `?seed=N`. Headless: `RANDOM_START=1 SEED=1 COUNT=6`.
 
-Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log` (random starts), `results/batch17-policy.log` (policy), `results/batch19-verify.log` (prose re-run after the cleanup: 6/6, 7.55, 243 ms). Older `results/` logs are from archived experiments.
+Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log` (random starts), `results/batch17-policy.log` (policy), `results/batch19-verify.log` (prose re-run after the cleanup: 6/6, 7.55, 243 ms). Older `results/` logs are from earlier experiments that have since been removed (see git history).
 
 ## What this shows, and what it doesn't
 
@@ -52,7 +52,7 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log`
 ## Key findings
 
 - **Prose + choice questions with option descriptions worked.** 6/6 with both models, one call per decision, the lowest latency of the three modes.
-- **Prose where the model picks the raw controls failed.** Earlier "scene" variants (engine on/off, joystick, throttle levels; archived) got 0/6 across many wordings. The model has to judge the situation, not fly the stick.
+- **Prose where the model picks the raw controls failed.** Earlier "scene" variants (engine on/off, joystick, throttle levels; since removed) got 0/6 across many wordings. The model has to judge the situation, not fly the stick.
 - **Policies change behavior, but loosely.** Editing only the policy text changed descent speed and fuel use. Numbers in the policy ("no faster than 3 m/s above 30 m") were followed far better than adjectives ("gentle").
 - **The larger model was not better.** nimble:9b matched or trailed tev1:4b and was slower.
 - **Latency is mostly prompt prefill.** It scales with input tokens and the number of calls, not with the answer. The data mode's many short calls cost more than one prose call.
@@ -83,7 +83,6 @@ lander/policy.mjs        policy-mode questions and map
 lander/modes/            prose.json, policies/*.txt (edit these to change behavior)
 lander/index.html        game; lander/playground.html  playground
 lander/tools/            headless.mjs (fly), proseprobe.mjs (offline question probe)
-archive/                 earlier experiments (scene/joystick/hints modes, rival lander, benches); not maintained
 ```
 
 ## License
