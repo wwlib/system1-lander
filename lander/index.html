@@ -32,12 +32,12 @@ MARKERS (T)
  line = latency gap; colour = action
 
 LANDING  |vy| &lt; 4 m/s, |vx| &lt; 2 m/s, tilt &lt; 0.3 rad, on pad
-SCORE    10 minus deductions, plus fuel bonus</div><div id="paused">PAUSED</div><div id="outcome"></div><div id="btns"><button id="mode">Mode: AI (M)</button><button id="pause">Pause (P/Space)</button><button id="reset">Reset (R)</button><button id="tpanel">Panel (S)</button><button id="tmarks">Markers (T)</button><br><select id="selvar"></select><select id="selmodel"><option>tev1:4b</option><option>tev1:0.8b</option><option>nimble:9b</option></select><select id="selhost"><option value="primary">Ollama: primary</option></select><label style="background:#0008;padding:2px">time scale <input id="ts" type="range" min="0.1" max="1" step="0.05"> <span id="tsv"></span></label> <a href="/playground" target="_blank" style="color:#9cf;background:#0008;padding:2px">Playground ↗</a></div></div>
+SCORE    10 minus deductions, plus fuel bonus</div><div id="paused">PAUSED</div><div id="outcome"></div><div id="btns"><button id="mode">Mode: AI (M)</button><button id="pause">Pause (P/Space)</button><button id="reset">Reset (R)</button><button id="tpanel">Panel (S)</button><button id="tmarks">Markers (T)</button><br><select id="selvar"></select><select id="selmodel"><option>tev1:4b</option><option>tev1:0.8b</option><option>nimble:9b</option></select><select id="selhost"><option value="primary">Ollama: primary</option></select><label style="background:#0008;padding:2px" title="randomize x, altitude, vx, vy and tilt on each reset (replay: ?seed=N)"><input type="checkbox" id="rnd"> Random start</label> <label style="background:#0008;padding:2px">time scale <input id="ts" type="range" min="0.1" max="1" step="0.05"> <span id="tsv"></span></label> <a href="/playground" target="_blank" style="color:#9cf;background:#0008;padding:2px">Playground ↗</a></div></div>
 <div id="panel"><h2>System 1 calls → /v1/systemone</h2>
 <div class="meta" style="padding:2px 6px"><a href="/playground" target="_blank" style="color:#9cf">System 1 Playground ↗</a> · <button id="cap" title="open the latest call (first sub-call for data/policy) in the playground">open latest call in playground</button></div><details id="how" open style="max-height:60vh"><summary>How the model sees the game (latest call)</summary><div id="howBody" class="meta">waiting for first call…</div></details><div id="stats"><canvas id="spark" width="180" height="34"></canvas><span id="lat"></span></div>
 <div id="log"></div></div>
 <script type="module">
-import { newState, step, terrainY, PAD, W, ACTIONS } from './sim.mjs';
+import { newState, step, terrainY, PAD, W, ACTIONS, randomStart } from './sim.mjs';
 const COL = { burn_left: '#f60', burn_center: '#f33', burn_right: '#f0a', coast_left: '#0af', coast_center: '#0f8', coast_right: '#a6f' };
 const $ = id => document.getElementById(id), c = $('c'), g = c.getContext('2d'), hud = $('hud'), logEl = $('log'), spark = $('spark'), sg = spark.getContext('2d');
 let s, ai = true, dec = { thrust: false, tilt: 'center', action: null, ms: 0 }, inflight = null, gen = 0, callNo = 0, flash = 0, appliedId = null;
@@ -51,11 +51,17 @@ $('ts').oninput = e => { opts.timeScale = +e.target.value; $('tsv').textContent 
 $('ts').onchange = e => e.target.blur();
 let MODES = {};
 for (const [id, key, ls] of [['selvar', 'variant', 'mode3'], ['selmodel', 'model', 'model'], ['selhost', 'host', 'host']]) $(id).onchange = e => { opts[key] = e.target.value; localStorage.setItem('lander.' + ls, e.target.value); e.target.blur(); };
-function start() { return { x: 20 + Math.random() * 80, vx: (Math.random() - .5) * 4 }; }
+const URLP = new URLSearchParams(location.search); let urlSeed = URLP.has('seed') ? (+URLP.get('seed') >>> 0) : null;
+let randomOn = URLP.has('random') ? URLP.get('random') !== '0' : urlSeed != null || localStorage.getItem('lander.random') === '1', startInfo = '';
+// Random start (sim.mjs randomStart, seeded → replay with ?seed=N); off = the classic fixed start (x 40, alt 110 m, at rest).
+function start() { if (!randomOn) { startInfo = 'fixed start'; return { x: 40 }; }
+  const seed = urlSeed ?? ((Math.random() * 1e6) | 0); urlSeed = null; const st = randomStart(seed);
+  startInfo = `seed ${seed} · x ${st.x} · alt ${st.y - PAD.y} m · vx ${st.vx} · vy ${st.vy} · tilt ${(st.angle * 57.3).toFixed(0)}°`; return st; }
 const calls = [], marks = [], lats = []; let n = 0, sum = 0; const keys = {};
 function reset() { // new flight: per-flight counters and stats restart (call #, latency avg/min/max, sparkline, call log)
   callNo = 0; n = 0; sum = 0; n0 = 0; lats.length = 0; calls.length = 0; $('lat').textContent = ''; $('howBody').textContent = 'waiting for first call…';
   held = null; lastGap = null; firstWall = null; shownOutcome = null; $('outcome').className = ''; s = newState(start()); dec = { ...dec, thrust: false, tilt: 'center', action: null }; gen++; marks.length = 0; appliedId = null; inflight = null; renderLog(); }
+$('rnd').checked = randomOn; $('rnd').onchange = e => { randomOn = e.target.checked; localStorage.setItem('lander.random', randomOn ? '1' : '0'); e.target.blur(); reset(); };
 reset();
 addEventListener('keydown', e => { keys[e.key] = true; const k = e.key.toLowerCase();
   if (e.key === '?') document.body.classList.toggle('help'); if (k === 'm') toggle(); if (k === 'r') reset(); if (k === 's') togglePanel(); if (k === 't') toggleMarks(); if (k === 'p' || e.key === ' ') { e.preventDefault(); togglePause(); } });
@@ -140,6 +146,7 @@ const fuelBar = (f, col) => `<span class="fb"><i style="width:${Math.max(0, f)}%
 const shipRows = (x, col) => row(['alt', (x.y - PAD.y).toFixed(1) + ' m'], ['vy', sg1(x.vy) + ' m/s'], ['vx', sg1(x.vx) + ' m/s']) + row(['tilt', deg(x.angle)], ['fuel', fuelBar(x.fuel, col)]);
 function hudHTML(now, burning, rate) {
   let h = `<div class="g">SHIP · t ${s.t.toFixed(1)} s · ${opts.timeScale}×${paused ? ' · PAUSED' : ''}</div>` + shipRows(s, '#0f8');
+  h += `<div class="k" style="font-size:11px">start: ${esc(startInfo)}</div>`;
   h += `<div class="g">PILOT · ${ai ? `AI ${esc(opts.model || 'tev1:4b')} @ ${esc(opts.host || 'primary')} · ${esc(MODES[opts.variant] || opts.variant)}` : 'MANUAL (arrows)'}</div>`;
   h += row(['action', ai ? (dec.action ?? '-') : '-'], ['engine', burning ? `<span class="on">${dec.throttle ? dec.throttle.toUpperCase() : 'ON'}</span>` : 'off']);
   if (ai) h += row(['last', lastGap ? `${lastGap.ms} ms · ${lastGap.calls} call${lastGap.calls > 1 ? 's' : ''}` : '-'], ['lag', lastGap ? lastGap.dt.toFixed(1) + ' s' : '-']) +

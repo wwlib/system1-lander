@@ -1,15 +1,17 @@
 import '../env.mjs';
 // Fly the lander without a browser. Physics at 60 fps; each decision is applied after its real latency (× TIME_SCALE).
 // env: VARIANT=prose|data|policy:<name> (default prose) MODEL=tev1:4b EXTRA=2 (add seeded random starts; 2 → 6 starts) MAX_T=120
-import { newState, step, modelState } from '../sim.mjs'; import { decide, DEFAULTS } from '../server.mjs';
+//      RANDOM_START=1 SEED=N COUNT=6: instead fly COUNT random starts (sim.mjs randomStart) with seeds N, N+1, … (same starts as the game's ?seed=N)
+import { newState, step, modelState, randomStart } from '../sim.mjs'; import { decide, DEFAULTS } from '../server.mjs';
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const starts = [{ x: 40 }, { x: 135, vx: 2 }, { x: 80, vx: -3, y: 100 }, { x: 20, y: 140 }];
 for (let i = 0; i < +(process.env.EXTRA || 0); i++) starts.push({ x: Math.round(20 + rnd() * 80), vx: Math.round((rnd() - .5) * 40) / 10 });
+if (process.env.RANDOM_START === '1') { const s0 = +(process.env.SEED || 1); starts.length = 0; for (let i = 0; i < +(process.env.COUNT || 6); i++) starts.push({ seed: s0 + i, ...randomStart(s0 + i) }); }
 const TS = +(process.env.TIME_SCALE || 1), MAX_T = +(process.env.MAX_T || 120);
 const opt = { variant: process.env.VARIANT || DEFAULTS.variant, model: process.env.MODEL || DEFAULTS.model, host: process.env.PROVIDER || DEFAULTS.host };
 const all = [], scores = [], fuels = []; let agree = 0, nDec = 0, tok = 0, landed = 0;
 for (const st of starts) {
-  const s = newState(st); let d = { thrust: false, tilt: 'center' }, lat = [], maxFall = 0, thrSum = 0;
+  const { seed: _seed, ...st0 } = st, s = newState(st0); let d = { thrust: false, tilt: 'center' }, lat = [], maxFall = 0, thrSum = 0;
   while (!s.outcome) { if (s.t > MAX_T) { s.outcome = `crash (timeout: still flying after ${MAX_T} s sim)`; break; }
     const r = await decide({ ...s }, opt); lat.push(r.ms); tok = r.usage?.input_tokens; thrSum += +r.thrust || 0; nDec++;
     const o = modelState(s); agree += !!r.thrust === (o.engine === 'burn') && r.tilt === (o.steer === 'none' ? 'center' : o.steer);

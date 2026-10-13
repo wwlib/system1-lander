@@ -110,3 +110,9 @@ export function dataMap(a) {
   if (a.spd_gt3 || a.spd_x8) return away;
   return a.spd_lt2_5 && a.slow_x8 ? toward : 'center';
 }
+
+// ---- Random start (seeded, replayable). Ranges are landable: well inside the world, moderate speeds, small tilt; fuel stays 100. ----
+export const RANDOM_START = { x: [15, 185], y: [60, 150], vx: [-3, 3], vy: [-4, 1], angle: [-0.15, 0.15] }; // m, m (pad at 10), m/s, m/s, rad
+export function rng(seed) { let a = Math.imul(seed >>> 0, 2654435761) ^ 0x9E3779B9; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; } // mulberry32
+export function randomStart(seed) { const r = rng(seed), R = RANDOM_START, u = ([a, b], d = 1) => Math.round((a + r() * (b - a)) * d) / d;
+  return { x: u(R.x), y: u(R.y), vx: u(R.vx, 10), vy: u(R.vy, 10), angle: u(R.angle, 100) }; }
