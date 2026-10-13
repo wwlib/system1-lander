@@ -149,7 +149,7 @@ function hudHTML(now, burning, rate) {
   h += `<div class="k" style="font-size:11px">start: ${esc(startInfo)}</div>`;
   h += `<div class="g">PILOT · ${ai ? `AI ${esc(opts.model || 'tev1:4b')} @ ${esc(opts.host || 'primary')} · ${esc(MODES[opts.variant] || opts.variant)}` : 'MANUAL (arrows)'}</div>`;
   h += row(['action', ai ? (dec.action ?? '-') : '-'], ['engine', burning ? `<span class="on">${dec.throttle ? dec.throttle.toUpperCase() : 'ON'}</span>` : 'off']);
-  if (ai) h += row(['last', lastGap ? `${lastGap.ms} ms · ${lastGap.calls} call${lastGap.calls > 1 ? 's' : ''}` : '-'], ['lag', lastGap ? lastGap.dt.toFixed(1) + ' s' : '-']) +
+  if (ai) h += row(['call', lastGap ? `#${lastGap.id} · ${lastGap.ms} ms${lastGap.calls > 1 ? ` (${lastGap.calls} sub-calls)` : ''}` : '-'], ['lag', lastGap ? lastGap.dt.toFixed(1) + ' s' : '-']) +
     row(['now', inflight ? `calling ${Math.round(now - inflight.t0)} ms` : s.outcome ? 'done' : 'idle'], ['avg', n ? (sum / n).toFixed(0) + ' ms' : '-'], ['rate', rate + '/s']);
   return h + '<div class="k" style="margin-top:4px;font-size:11px">? = keys &amp; legend</div>'; }
 let last = performance.now(), cw = 0, ch = 0;
