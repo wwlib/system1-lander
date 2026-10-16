@@ -8,7 +8,7 @@ A lunar lander flown in real time by a small **System 1 decision model** through
 
 ```bash
 cp .env.example .env        # set OLLAMA_URL (and optionally OLLAMA_URL2 as a fallback host)
-ollama pull tev1:4b         # also tried: nimble:9b, tev1:0.8b
+ollama pull tev1:4b         # also tried: nimble:9b, tev1:0.8b; also in the menu: d1:3b, nimble-v3:9b (needs Ollama 0.40.4+)
 npm start                   # game at http://localhost:8787, playground at /playground
 npm run headless            # fly 4 starts without a browser (EXTRA=2 → 6 starts; VARIANT=data|policy:careful|…)
 npm run hello               # minimal /v1/systemone example

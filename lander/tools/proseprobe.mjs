@@ -1,7 +1,7 @@
 // @ts-check
 // Probe the prose-mode questions (lander/modes/prose.json) on single perception sentences and
 // score the answers against what a sensible pilot would pick.
-// Environment: MODELS=nimble:9b,tev1:4b   OLLAMA_URL=http://localhost:11434
+// Environment: MODELS=nimble:9b,tev1:4b (also d1:3b, nimble-v3:9b)   OLLAMA_URL=http://localhost:11434
 
 import '../env.mjs';
 // (This used to import '../criteria.mjs', which no longer exists.)
