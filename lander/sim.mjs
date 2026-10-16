@@ -131,14 +131,15 @@ function crashReasons(ship) {
  * @param {number} timeStep  seconds
  * @param {Thrust} thrust
  * @param {Tilt} tilt
+ * @param {number} [tiltRate]  how fast the ship leans toward the commanded tilt, rad/s
  * @returns {Ship}
  */
-export function step(ship, timeStep, thrust, tilt) {
+export function step(ship, timeStep, thrust, tilt, tiltRate = 2.0) {
   if (ship.outcome) {
     return ship;
   }
 
-  // Lean toward the commanded tilt at up to 2 rad/s.
+  // Lean toward the commanded tilt at up to tiltRate rad/s (2 by default).
   let targetAngle = 0;
   if (tilt === 'left') {
     targetAngle = -TILT;
@@ -146,7 +147,7 @@ export function step(ship, timeStep, thrust, tilt) {
     targetAngle = TILT;
   }
   const angleGap = targetAngle - ship.angle;
-  ship.angle += Math.sign(angleGap) * Math.min(Math.abs(angleGap), 2.0 * timeStep);
+  ship.angle += Math.sign(angleGap) * Math.min(Math.abs(angleGap), tiltRate * timeStep);
 
   // With the engine off, small attitude jets still give a sideways push when tilted.
   let accelerationX = (1.0 * Math.sin(ship.angle)) / Math.sin(TILT);

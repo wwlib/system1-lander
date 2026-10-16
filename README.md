@@ -58,6 +58,39 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log`
 - **Latency is mostly prompt prefill.** It scales with input tokens and the number of calls, not with the answer. The data mode's many short calls cost more than one prose call.
 - **Switching models costs a reload.** On a 12 GB GPU, switching between nimble:9b and tev1:4b reloads the model (~6–15 s for the first call). Use a long `keep_alive`.
 
+## Decision rate, smoothing and latency (the pilot loop)
+
+`lander/pilot-loop.mjs` sits between the model's answers and the engine. The game and `tools/headless.mjs` both use it. Everything in it is **plain code with fixed limits, not model behavior**. The request body is unchanged; the loop only decides *when* to call and *which* ship state to send.
+
+- **Decision rate** (`decisions` menu, `?rate=1|2|5|10|20|max`, `DECISION_RATE`; default 5/s). It is measured in sim time, so time scale and pause are respected. The next call goes out no sooner than 1/rate sim-seconds after the previous one was sent, and only one call is ever in flight. The HUD shows the target rate and the rate actually achieved.
+- **Smoothing** (`?smooth=`, `SMOOTHING`; default on). A reply sets a target throttle and tilt. The throttle eases toward its target with a 0.15 s time constant, and the tilt slews at most 2 rad/s.
+- **Latency compensation** (`?comp=`, `LATENCY_COMP`; default on). The request carries the ship state predicted for when the reply will land: the current state, propagated forward by the recent average reply age under the current controls. A reply older than 1.5 sim-seconds is discarded, but only while a fresher target is still in force; if every reply is slow, an old answer beats none. The HUD shows `LATE REPLY` while waiting longer than that.
+- **Impulse limits** (`?impulse=`, `IMPULSE_LIMITS`; default on). These are safety limits in code:
+  - **Burn lease.** A throttle target is valid for max(1/rate, 0.4 s) of sim time. After that, without a new answer, the throttle eases down to hover (about 0.41), or to 0 if the ship is already rising.
+  - **Climb guard.** If the ship is rising faster than 1 m/s, the throttle is capped at half of hover.
+  - Late replies keep the last **steering** target, but never a full burn.
+  - No per-command impulse budget was needed after these two.
+- **Testing slow hosts:** `?delay=ms` (or `DELAY_MS`) adds artificial latency to every reply.
+
+Pilot-loop results (Ollama 0.40.3 on the Mac mini, tev1:4b, prose mode, random seeds 1–6). Latency is per call; with `DELAY_MS`, the delay is included.
+
+| setting | landed | avg score | fuel left | actual rate | avg latency | flew away |
+|---|---|---|---|---|---|---|
+| rate 2, defaults | 5/6 | 5.95 | 56% | 1.7/s | 137 ms | 0 |
+| **rate 5, defaults** | **5/6** | **5.50** | 60% | 3.8/s | 81 ms | 0 |
+| rate 10, defaults | 4/6 | 4.62 | 61% | 7.5/s | 39 ms | 0 |
+| rate max, defaults | 4/6 | 4.72 | 59% | 44.9/s | 11 ms | 0 |
+| rate max, smoothing off | 5/6 | 5.57 | 59% | 45.1/s | 11 ms | 0 |
+| rate max, everything off (old behavior) | 6/6 | 6.95 | 51% | 45.4/s | 11 ms | 0 |
+| delay 600 ms, compensation on | 5/6 | 5.90 | 59% | 1.2/s | 758 ms | 0 |
+| delay 600 ms, compensation off | 4/6 | 5.20 | 62% | 1.2/s | 752 ms | 0 |
+| **delay 1200 ms, defaults** | **5/6** | **5.97** | 65% | 0.6/s | 1483 ms | 0 |
+| delay 1200 ms, compensation off | 2/6 | 2.43 | 70% | 0.6/s | 1503 ms | 0 |
+| delay 1200 ms, impulse limits off | 0/6 | 0.00 | 0% | 0.7/s | 1467 ms | 0 |
+| delay 1200 ms, everything off (old behavior) | 0/6 | 0.00 | 0% | 0.6/s | 1695 ms | 1 |
+
+The two bold rows use the current defaults. The other smoothing-on rows ran with an earlier 1.5 rad/s tilt limit; at rate 5 that limit landed 4/6 (score 4.72) against 5/6 with 2 rad/s, which is why the default is now 2. With a fast host, the old "as fast as possible, no smoothing" loop lands best; these six seeds can't tell the 5/6 settings apart. With a slow host, latency compensation and the impulse limits decide the outcome. Without the limits, a held burn emptied the tank on every flight (and one ship flew out of the world). Seed 1 is the usual crash in every setting: it drifts in sideways at just over 2 m/s.
+
 ## Playground
 
 `/playground` sends any `/v1/systemone` request through the server (no CORS issue; input is validated).
@@ -80,6 +113,7 @@ For where the model calls happen, see the [code walkthrough](docs/code-walkthrou
 ```
 lander/server.mjs        HTTP server, the 3 modes, playground proxy (/api/systemone, /api/models, /api/examples)
 lander/sim.mjs           physics + data-mode questions (shared with the browser)
+lander/pilot-loop.mjs    decision rate, smoothing, latency compensation, impulse limits (browser + headless)
 lander/prose.mjs         perception bands → prose sentences, prose-mode control map
 lander/policy.mjs        policy-mode questions and map
 lander/modes/            prose.json, policies/*.txt (edit these to change behavior)

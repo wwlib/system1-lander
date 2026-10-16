@@ -3,9 +3,18 @@
 // call is in flight, POSTs the ship state to /decide. The reply's controls are applied when it
 // arrives, so model latency is visible as lag. The right panel shows every call.
 //
-// URL parameters: ?seed=N (replay a random start), ?random=0|1, ?redact=1 (mask IPs in screenshots).
+// URL parameters: ?seed=N (replay a random start), ?random=0|1, ?redact=1 (mask IPs in screenshots),
+// pilot loop: ?rate=1|2|5|10|20|max ?smooth=0|1 ?comp=0|1 ?impulse=0|1 ?delay=ms (artificial lag).
 
 import { newState, step, terrainY, PAD, W, ACTIONS, randomStart } from './sim.mjs';
+import {
+  createPilotLoop,
+  parseRate,
+  parseFlag,
+  rateLabel,
+  RATE_CHOICES,
+  DEFAULT_SETTINGS,
+} from './pilot-loop.mjs';
 
 /** @typedef {import('./sim.mjs').Ship} Ship */
 
@@ -105,6 +114,24 @@ let randomStartOn = urlParams.has('random')
   : urlSeed != null || localStorage.getItem('lander.random') === '1';
 // ?redact=1 masks IPv4 host addresses (for screenshots).
 const REDACT = new URLSearchParams(location.search).has('redact');
+
+// ---- Pilot loop settings (lander/pilot-loop.mjs): URL parameter, else saved, else default ----
+
+/** @param {string} urlKey @param {string} storageKey */
+function savedSetting(urlKey, storageKey) {
+  return urlParams.get(urlKey) ?? localStorage.getItem('lander.' + storageKey);
+}
+
+const pilotSettings = {
+  rate: parseRate(savedSetting('rate', 'rate')) ?? DEFAULT_SETTINGS.rate,
+  smoothing: parseFlag(savedSetting('smooth', 'smooth'), DEFAULT_SETTINGS.smoothing),
+  latencyComp: parseFlag(savedSetting('comp', 'comp'), DEFAULT_SETTINGS.latencyComp),
+  impulseLimits: parseFlag(savedSetting('impulse', 'impulse'), DEFAULT_SETTINGS.impulseLimits),
+};
+/** Artificial extra latency per reply, ms (for testing slow hosts; not saved). */
+const DELAY_MS = Number(urlParams.get('delay') || 0);
+/** @type {import('./pilot-loop.mjs').PilotLoop} */
+let pilot = createPilotLoop(pilotSettings);
 
 // ---- Small helpers ----
 
@@ -239,6 +266,7 @@ function reset() {
   shownOutcome = null;
   byId('outcome').className = '';
   ship = newState(chooseStart());
+  pilot = createPilotLoop(pilotSettings);
   activeDecision = { ...activeDecision, thrust: false, tilt: 'center', action: null };
   flightGeneration = flightGeneration + 1;
   markers.length = 0;
@@ -413,6 +441,9 @@ function statusTagHTML(call) {
   if (call.status === 'error') {
     return '<span class="tag err">error</span>';
   }
+  if (call.status === 'too-old') {
+    return `<span class="tag">discarded: ${call.age.toFixed(1)} s old</span>`;
+  }
   if (call.status === 'stale') {
     return '<span class="tag">discarded (reset)</span>';
   }
@@ -542,6 +573,13 @@ function drawSparkline() {
  * @param {any} call @param {any} decision @param {any} marker
  */
 function applyDecision(call, decision, marker) {
+  const verdict = pilot.receive(call.pilotCall, decision, ship);
+  if (verdict === 'discarded') {
+    // Too old to trust (latency compensation): keep the previous targets.
+    call.status = 'too-old';
+    call.age = pilot.stats.lastAge;
+    return;
+  }
   activeDecision = decision;
   decision.appliedSimT = ship.t;
   lastGap = {
@@ -720,16 +758,19 @@ function renderHow(call) {
 
 /** Send the ship state to /decide, unless a call is already in flight. */
 async function ask() {
-  if (!aiPiloting || paused || inflightCall || ship.outcome) {
+  if (!aiPiloting || paused || inflightCall || !pilot.shouldSend(ship)) {
     return;
   }
   const generation = flightGeneration;
+  // With latency compensation, this is the state predicted for when the reply lands.
+  const { call: pilotCall, requestShip } = pilot.send(ship);
   callNumber = callNumber + 1;
   const call = {
     id: callNumber,
     wall: wallClock(),
     sentT: ship.t,
-    sent: { ...ship },
+    sent: { ...requestShip },
+    pilotCall,
     status: 'pending',
     t0: performance.now(),
   };
@@ -748,11 +789,14 @@ async function ask() {
   try {
     const response = await fetch('/decide', {
       method: 'POST',
-      body: JSON.stringify({ sim: ship, ...options }),
+      body: JSON.stringify({ sim: requestShip, ...options }),
     });
     const decision = await response.json();
     if (decision.error) {
       throw decision.error;
+    }
+    if (DELAY_MS > 0) {
+      await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
     call.res = decision;
     if (generation !== flightGeneration) {
@@ -770,6 +814,9 @@ async function ask() {
   } catch (error) {
     call.status = 'error';
     call.err = String(error);
+    if (generation === flightGeneration) {
+      pilot.abandon();
+    }
   }
   if (inflightCall === call) {
     inflightCall = null;
@@ -850,9 +897,79 @@ function hudHTML(now, burning, callRate) {
         ['now', status],
         ['avg', appliedCount ? (latencySum / appliedCount).toFixed(0) + ' ms' : '-'],
         ['rate', callRate + '/s'],
-      );
+      ) +
+      pilotRowsHTML();
   }
   return html + '<div class="k" style="margin-top:4px;font-size:11px">? = keys &amp; legend</div>';
+}
+
+/** Decision rate (target vs actual, in sim time), controls vs targets, and safety flags. */
+function pilotRowsHTML() {
+  const settings = pilot.settings;
+  const actual = pilot.actualRate(ship).toFixed(1);
+  const throttlePercent = Math.round(pilot.controls.throttle * 100) + '%';
+  const targetPercent = Math.round(pilot.targets.throttle * 100) + '%';
+  const flags = [];
+  if (pilot.isLate(ship)) {
+    flags.push('<span class="on">LATE REPLY</span>');
+  }
+  if (pilot.stats.leaseExpired) {
+    flags.push('<span class="on">burn lease expired</span>');
+  }
+  if (pilot.stats.climbGuardActive) {
+    flags.push('<span class="on">climb guard</span>');
+  }
+  const onOff = (/** @type {boolean} */ value) => (value ? 'on' : 'off');
+  return (
+    hudRow(
+      ['decisions/s', `${rateLabel(settings.rate)} → ${actual}`],
+      ['throttle', `${throttlePercent} (target ${targetPercent})`],
+    ) +
+    hudRow(
+      ['smooth', onOff(settings.smoothing)],
+      ['comp', onOff(settings.latencyComp)],
+      ['impulse', onOff(settings.impulseLimits)],
+      ['delay', DELAY_MS + ' ms'],
+    ) +
+    hudRow(
+      ['age', pilot.stats.lastAge.toFixed(2) + ' s'],
+      ['discarded', String(pilot.stats.discarded)],
+    ) +
+    (flags.length ? `<div class="r">${flags.join(' · ')}</div>` : '')
+  );
+}
+
+// ---- Pilot loop controls ----
+
+function setUpPilotControls() {
+  const rateSelect = byId('selrate');
+  rateSelect.innerHTML = RATE_CHOICES.map(
+    (choice) => `<option value="${choice}">${choice === 'max' ? 'max' : choice + '/s'}</option>`,
+  ).join('');
+  rateSelect.value = rateLabel(pilotSettings.rate);
+  rateSelect.onchange = (/** @type {any} */ event) => {
+    pilotSettings.rate = parseRate(event.target.value) ?? DEFAULT_SETTINGS.rate;
+    pilot.settings.rate = pilotSettings.rate;
+    localStorage.setItem('lander.rate', event.target.value);
+    event.target.blur();
+  };
+
+  /** @type {[string, 'smoothing' | 'latencyComp' | 'impulseLimits', string][]} */
+  const toggles = [
+    ['smooth', 'smoothing', 'smooth'],
+    ['comp', 'latencyComp', 'comp'],
+    ['impulse', 'impulseLimits', 'impulse'],
+  ];
+  for (const [elementId, settingKey, storageKey] of toggles) {
+    const checkbox = byId(elementId);
+    checkbox.checked = pilotSettings[settingKey];
+    checkbox.onchange = (/** @type {any} */ event) => {
+      pilotSettings[settingKey] = event.target.checked;
+      pilot.settings[settingKey] = event.target.checked;
+      localStorage.setItem('lander.' + storageKey, event.target.checked ? '1' : '0');
+      event.target.blur();
+    };
+  }
 }
 
 // ---- Drawing ----
@@ -1022,13 +1139,16 @@ function frame(now) {
   } else if (keysDown.ArrowRight) {
     tilt = 'right';
   }
-  if (aiPiloting) {
-    thrust = activeDecision.thrust;
-    tilt = activeDecision.tilt;
-  }
-
   if (!paused) {
-    step(ship, timeStep, thrust, /** @type {any} */ (tilt));
+    if (aiPiloting) {
+      // The pilot loop eases toward the model's targets and applies the impulse limits.
+      pilot.stepShip(ship, timeStep);
+    } else {
+      step(ship, timeStep, thrust, /** @type {any} */ (tilt));
+    }
+  }
+  if (aiPiloting) {
+    thrust = pilot.controls.throttle > 0;
   }
   if (ship.outcome && ship.outcomeT == null) {
     ship.outcomeT = ship.t;
@@ -1070,5 +1190,6 @@ fetch('/config')
 setUpTimeScale();
 setUpSelects();
 setUpControls();
+setUpPilotControls();
 reset();
 requestAnimationFrame(frame);

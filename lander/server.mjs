@@ -614,6 +614,7 @@ async function models(hostKey) {
 /** Static files the pages load, with their content types. Any other path serves index.html. */
 const STATIC_FILES = {
   '/sim.mjs': 'text/javascript',
+  '/pilot-loop.mjs': 'text/javascript',
   '/game.js': 'text/javascript',
   '/game.css': 'text/css',
   '/playground.js': 'text/javascript',
