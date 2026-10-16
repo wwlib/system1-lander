@@ -62,7 +62,7 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log`
 
 `lander/pilot-loop.mjs` sits between the model's answers and the engine. The game and `tools/headless.mjs` both use it. Everything in it is **plain code with fixed limits, not model behavior**. The request body is unchanged; the loop only decides *when* to call and *which* ship state to send.
 
-- **Decision rate** (`decisions` menu, `?rate=1|2|5|10|20|max`, `DECISION_RATE`; default 5/s). It is measured in sim time, so time scale and pause are respected. The next call goes out no sooner than 1/rate sim-seconds after the previous one was sent, and only one call is ever in flight. The HUD shows the target rate and the rate actually achieved.
+- **Decision rate** (`decisions` menu, `?rate=1|2|4|5|10`, `DECISION_RATE`; default 4/s, one call per 250 ms of sim time). Headless tests also accept `DECISION_RATE=max`; a `max` saved by an older version resets to 4. It is measured in sim time, so time scale and pause are respected. The next call goes out no sooner than 1/rate sim-seconds after the previous one was sent, and only one call is ever in flight. The HUD shows the target rate and the rate actually achieved.
 - **Smoothing** (`?smooth=`, `SMOOTHING`; default on). A reply sets a target throttle and tilt. The throttle eases toward its target with a 0.15 s time constant, and the tilt slews at most 2 rad/s.
 - **Latency compensation** (`?comp=`, `LATENCY_COMP`; default on). The request carries the ship state predicted for when the reply will land: the current state, propagated forward by the recent average reply age under the current controls. A reply older than 1.5 sim-seconds is discarded, but only while a fresher target is still in force; if every reply is slow, an old answer beats none. The HUD shows `LATE REPLY` while waiting longer than that.
 - **Impulse limits** (`?impulse=`, `IMPULSE_LIMITS`; default on). These are safety limits in code:
@@ -70,9 +70,10 @@ Logs: `results/batch18-criteria.log` (prose), `results/batch20-random-start.log`
   - **Climb guard.** If the ship is rising faster than 1 m/s, the throttle is capped at half of hover.
   - Late replies keep the last **steering** target, but never a full burn.
   - No per-command impulse budget was needed after these two.
+- **Same-scene skip** (`SAME_SCENE_SKIP=0` turns it off). In prose mode the scene sentences change only when the ship crosses a band, so most calls repeat the previous body byte for byte. The server reuses the last answer for an identical body less than 1 sim-second old instead of calling the model. The HUD counts these as `skipped (same scene)`. Calls that are made send exactly the same body as before.
 - **Testing slow hosts:** `?delay=ms` (or `DELAY_MS`) adds artificial latency to every reply.
 
-Pilot-loop results (Ollama 0.40.3 on the Mac mini, tev1:4b, prose mode, random seeds 1–6). Latency is per call; with `DELAY_MS`, the delay is included.
+Pilot-loop results (Mac mini Ollama, tev1:4b on the MLX runner (mxfp8); the Mac moved from Ollama 0.40.3 to 0.40.5 during this work, and these rows predate the 4/s default and the same-scene skip; tev1:4b, prose mode, random seeds 1–6). Latency is per call; with `DELAY_MS`, the delay is included.
 
 | setting | landed | avg score | fuel left | actual rate | avg latency | flew away |
 |---|---|---|---|---|---|---|
@@ -90,6 +91,24 @@ Pilot-loop results (Ollama 0.40.3 on the Mac mini, tev1:4b, prose mode, random s
 | delay 1200 ms, everything off (old behavior) | 0/6 | 0.00 | 0% | 0.6/s | 1695 ms | 1 |
 
 The two bold rows use the current defaults. The other smoothing-on rows ran with an earlier 1.5 rad/s tilt limit; at rate 5 that limit landed 4/6 (score 4.72) against 5/6 with 2 rad/s, which is why the default is now 2. With a fast host, the old "as fast as possible, no smoothing" loop lands best; these six seeds can't tell the 5/6 settings apart. With a slow host, latency compensation and the impulse limits decide the outcome. Without the limits, a held burn emptied the tank on every flight (and one ship flew out of the world). Seed 1 is the usual crash in every setting: it drifts in sideways at just over 2 m/s.
+
+### Why the Mac answers in ~10 ms: prompt cache hits
+
+The very fast Mac latencies are mostly cache hits, not fast inference. Measured on the Mac mini (Ollama 0.40.5, tev1:4b, MLX mxfp8):
+
+- An identical prose body comes back in about 5–11 ms. Ollama reports `prompt_eval_cached_count` 621 of 621 input tokens, so nothing is evaluated.
+- A changed scene shares only about 200 cached tokens of the template. It takes about **1.2 s** (median of 8 distinct scenes: 1191 ms), and so does a body with only a random suffix added.
+- Alternating between two scenes still hits for both, so several entries are cached.
+- The answers follow the scene sensibly: pad left gives `left`, about to touch down falling very fast gives `large` thrust, rising gives `small`. A hit is always for the identical body, so its answer is never stale. The hello.mjs JSON states (about 160 tokens) take about 340 ms per new state.
+- A cold call after unloading took 4.5 s.
+- Flights: at 4/s, prose flights see about 9 unique scenes each, and 150 of 286 calls in six flights were skipped as the same scene. At `max`, a flight made about 1,660 calls for about 12 unique scenes, so over 99% of calls were cache hits.
+- MLX vs llama.cpp Q8_0 on the Mac (`tev1:4b` vs `tev1:4b-q8_0`, same answers on 90/90 probes):
+  - MLX: changed-scene median 16 ms (p90 2235 ms), repeat median 5 ms.
+  - Q8_0: changed median 1589 ms (p90 2209 ms), and a repeat still costs 1522 ms; this setup showed no cache benefit.
+
+So on the Mac, a real new decision costs about 1.2 s, and the ~10 ms figure is the cache. The 4/s default and the same-scene skip avoid paying for repeats, and latency compensation covers the real ~1.2 s misses.
+
+Flights at the 4/s default (Mac, seeds 1–6): landed 4/6, avg score 4.48, 72% fuel left, actual 1.7/s. The Mac was also serving gemma4:12b-mlx for another task at the time, and some calls stalled for 2–22 s.
 
 ## Playground
 

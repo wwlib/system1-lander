@@ -270,6 +270,17 @@ function callRecord(name, upstream, probability, answer) {
 }
 
 /**
+ * Same-scene skip (prose mode). Perception prose changes only when the ship crosses a band, so
+ * consecutive bodies are often byte-identical. Ollama answers those from its prompt cache in a
+ * few ms anyway; here we skip the call entirely while the last answer is fresh. Answers are only
+ * reused for an IDENTICAL body (same model, scene and questions), so they are never stale for it.
+ */
+const SAME_SCENE_MAX_AGE = 1.0; // sim seconds
+/** @type {{ body: string, t: number, result: any } | null} */
+let lastProseCall = null;
+const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
+
+/**
  * PROSE: one call. state = perception sentences; questions come from lander/modes/prose.json.
  * @param {Ship} ship @param {string} model @param {number} startedAt @param {DecideOptions} options
  */
@@ -281,11 +292,23 @@ async function decideProse(ship, model, startedAt, options) {
     questions: questionSet.questions,
     keep_alive: KEEP_ALIVE,
   };
+  const bodyText = JSON.stringify(request);
+  const age = lastProseCall ? ship.t - lastProseCall.t : Infinity;
+  if (sameSceneEnabled && lastProseCall?.body === bodyText && age >= 0 && age <= SAME_SCENE_MAX_AGE) {
+    const reused = lastProseCall.result;
+    return {
+      ...reused,
+      sameScene: true,
+      usage: { input_tokens: 0, output_tokens: 0, calls: 0 },
+      ms: Math.round(performance.now() - startedAt),
+      simState: ship,
+    };
+  }
   const upstream = await call(options.host, request);
   const answers = upstream.j.answers || {};
   const controls = proseMap(answers, ship);
   const thrust = controls.throttle > 0 ? controls.throttle : false;
-  return {
+  const result = {
     variant: 'prose',
     model,
     thrust,
@@ -308,6 +331,10 @@ async function decideProse(ship, model, startedAt, options) {
     },
     simState: ship,
   };
+  if (Number.isFinite(ship.t)) {
+    lastProseCall = { body: bodyText, t: ship.t, result };
+  }
+  return result;
 }
 
 /**

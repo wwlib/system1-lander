@@ -11,8 +11,9 @@
 //                   instead fly COUNT random starts with seeds N, N+1, … (sim.mjs randomStart;
 //                   the same starts as the game's ?seed=N)
 //   Pilot loop (defaults from pilot-loop.mjs):
-//   DECISION_RATE=5 (calls per sim second, or max)  SMOOTHING=1  LATENCY_COMP=1  IMPULSE_LIMITS=1
+//   DECISION_RATE=4 (calls per sim second; max = no limit, tests only)  SMOOTHING=1  LATENCY_COMP=1  IMPULSE_LIMITS=1
 //   TILT_RATE=2     tilt slew limit with smoothing on, rad/s
+//   SAME_SCENE_SKIP=1  reuse the last prose answer for an identical body (< 1 sim s old)
 //   DELAY_MS=0      artificial extra latency added to every reply (simulates a slow host)
 
 import '../env.mjs';
@@ -112,6 +113,8 @@ const totals = {
   landed: 0,
   flewAway: 0,
   discarded: 0,
+  skipped: 0,
+  scenes: /** @type {number[]} */ ([]),
 };
 
 /**
@@ -127,6 +130,9 @@ async function flyOne(start) {
   let maxFall = 0;
   let maxHeight = ship.y;
   let throttleSum = 0;
+  let sameSceneSkips = 0;
+  /** Distinct prose states sent (cache misses for Ollama's prompt cache). */
+  const scenes = new Set();
 
   function stepFrame() {
     loop.stepShip(ship, FRAME_SECONDS);
@@ -145,7 +151,14 @@ async function flyOne(start) {
     }
     const { call, requestShip } = loop.send(ship);
     const decision = await decide({ ...requestShip }, options);
-    const latencyMs = decision.ms + DELAY_MS;
+    if (decision.sameScene) {
+      sameSceneSkips = sameSceneSkips + 1;
+    }
+    if (typeof decision.upstream?.request?.state === 'string') {
+      scenes.add(decision.upstream.request.state);
+    }
+    // A skipped call has no model latency; the artificial delay stands for a real call only.
+    const latencyMs = decision.ms + (decision.sameScene ? 0 : DELAY_MS);
     latencies.push(latencyMs);
     totals.lastInputTokens = decision.usage?.input_tokens;
     throttleSum = throttleSum + (Number(decision.thrust) || 0);
@@ -167,7 +180,9 @@ async function flyOne(start) {
   const altitudeReached = maxHeight - 10;
   const flewAway =
     altitudeReached >= FLY_AWAY_HEIGHT || /out of bounds|timeout/.test(ship.outcome || '');
-  totals.latencies.push(...latencies);
+  for (const latency of latencies) {
+    totals.latencies.push(latency);
+  }
   if (ship.outcome === 'LANDED') {
     totals.landed = totals.landed + 1;
   }
@@ -178,6 +193,8 @@ async function flyOne(start) {
   totals.fuels.push(ship.fuel);
   totals.rates.push(loop.actualRate(ship));
   totals.discarded = totals.discarded + loop.stats.discarded;
+  totals.scenes.push(scenes.size);
+  totals.skipped = totals.skipped + sameSceneSkips;
 
   const score = (ship.score ?? 0).toFixed(1);
   const breakdown = ship.outcome === 'LANDED' ? ' ' + JSON.stringify(ship.scoreBreakdown) : '';
@@ -190,6 +207,7 @@ async function flyOne(start) {
       `avg=${average(latencies).toFixed(0)}ms maxfall=${maxFall.toFixed(1)} ` +
       `avgthr=${(throttleSum / Math.max(1, latencies.length)).toFixed(2)} ` +
       `rate=${loop.actualRate(ship).toFixed(1)}/s discarded=${loop.stats.discarded} ` +
+      `scenes=${scenes.size} skipped=${sameSceneSkips} ` +
       `maxalt=${altitudeReached.toFixed(0)}m${flewAway ? ' FLEW-AWAY' : ''}`,
   );
 }
@@ -211,5 +229,6 @@ console.log(
     `smoothing ${pilotSettings.smoothing ? 'on' : 'off'}, ` +
     `latencyComp ${pilotSettings.latencyComp ? 'on' : 'off'}, ` +
     `impulse ${pilotSettings.impulseLimits ? 'on' : 'off'}, delay ${DELAY_MS} ms, ` +
-    `discarded ${totals.discarded}, flew away ${totals.flewAway}`,
+    `discarded ${totals.discarded}, flew away ${totals.flewAway}, ` +
+    `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}`,
 );

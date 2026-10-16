@@ -36,7 +36,7 @@ export const HOVER_THROTTLE = G / THRUST;
 
 /** @type {PilotSettings} */
 export const DEFAULT_SETTINGS = {
-  rate: 5,
+  rate: 4,
   smoothing: true,
   throttleTau: 0.15,
   tiltRate: 2.0,
@@ -47,8 +47,21 @@ export const DEFAULT_SETTINGS = {
   climbLimit: 1.0,
 };
 
-/** The rate choices offered in the UI. */
-export const RATE_CHOICES = ['1', '2', '5', '10', '20', 'max'];
+/** The rate choices offered in the UI. ('max' is accepted only by headless tests, DECISION_RATE=max.) */
+export const RATE_CHOICES = ['1', '2', '4', '5', '10'];
+
+/**
+ * A rate for the browser: one of RATE_CHOICES, else the default. A saved 'max' from older
+ * versions therefore becomes 4/s.
+ * @param {string | null | undefined} text
+ * @returns {number}
+ */
+export function uiRate(text) {
+  if (text != null && RATE_CHOICES.includes(text)) {
+    return Number(text);
+  }
+  return DEFAULT_SETTINGS.rate;
+}
 
 /**
  * Parse a rate like "5" or "max".

@@ -4,12 +4,12 @@
 // arrives, so model latency is visible as lag. The right panel shows every call.
 //
 // URL parameters: ?seed=N (replay a random start), ?random=0|1, ?redact=1 (mask IPs in screenshots),
-// pilot loop: ?rate=1|2|5|10|20|max ?smooth=0|1 ?comp=0|1 ?impulse=0|1 ?delay=ms (artificial lag).
+// pilot loop: ?rate=1|2|4|5|10 ?smooth=0|1 ?comp=0|1 ?impulse=0|1 ?delay=ms (artificial lag).
 
 import { newState, step, terrainY, PAD, W, ACTIONS, randomStart } from './sim.mjs';
 import {
   createPilotLoop,
-  parseRate,
+  uiRate,
   parseFlag,
   rateLabel,
   RATE_CHOICES,
@@ -91,6 +91,8 @@ const markers = [];
 /** @type {number[]} */
 const latencies = [];
 let appliedCount = 0;
+/** Prose calls the server skipped because the scene was identical to the last call's. */
+let sameSceneSkips = 0;
 let latencySum = 0;
 /** Applied count at the start of the flight (always 0 since reset clears counts). */
 let appliedCountAtStart = 0;
@@ -123,7 +125,7 @@ function savedSetting(urlKey, storageKey) {
 }
 
 const pilotSettings = {
-  rate: parseRate(savedSetting('rate', 'rate')) ?? DEFAULT_SETTINGS.rate,
+  rate: uiRate(savedSetting('rate', 'rate')),
   smoothing: parseFlag(savedSetting('smooth', 'smooth'), DEFAULT_SETTINGS.smoothing),
   latencyComp: parseFlag(savedSetting('comp', 'comp'), DEFAULT_SETTINGS.latencyComp),
   impulseLimits: parseFlag(savedSetting('impulse', 'impulse'), DEFAULT_SETTINGS.impulseLimits),
@@ -254,6 +256,7 @@ function chooseStart() {
 function reset() {
   callNumber = 0;
   appliedCount = 0;
+  sameSceneSkips = 0;
   latencySum = 0;
   appliedCountAtStart = 0;
   latencies.length = 0;
@@ -582,6 +585,9 @@ function applyDecision(call, decision, marker) {
   }
   activeDecision = decision;
   decision.appliedSimT = ship.t;
+  if (decision.sameScene) {
+    sameSceneSkips = sameSceneSkips + 1;
+  }
   lastGap = {
     id: call.id,
     dt: ship.t - call.sentT,
@@ -934,6 +940,7 @@ function pilotRowsHTML() {
     hudRow(
       ['age', pilot.stats.lastAge.toFixed(2) + ' s'],
       ['discarded', String(pilot.stats.discarded)],
+      ['skipped (same scene)', String(sameSceneSkips)],
     ) +
     (flags.length ? `<div class="r">${flags.join(' · ')}</div>` : '')
   );
@@ -944,11 +951,15 @@ function pilotRowsHTML() {
 function setUpPilotControls() {
   const rateSelect = byId('selrate');
   rateSelect.innerHTML = RATE_CHOICES.map(
-    (choice) => `<option value="${choice}">${choice === 'max' ? 'max' : choice + '/s'}</option>`,
+    (choice) => `<option value="${choice}">${choice}/s</option>`,
   ).join('');
+  // Older versions could save 'max'; it is no longer offered, so store the default instead.
+  if (localStorage.getItem('lander.rate') === 'max') {
+    localStorage.setItem('lander.rate', String(DEFAULT_SETTINGS.rate));
+  }
   rateSelect.value = rateLabel(pilotSettings.rate);
   rateSelect.onchange = (/** @type {any} */ event) => {
-    pilotSettings.rate = parseRate(event.target.value) ?? DEFAULT_SETTINGS.rate;
+    pilotSettings.rate = uiRate(event.target.value);
     pilot.settings.rate = pilotSettings.rate;
     localStorage.setItem('lander.rate', event.target.value);
     event.target.blur();
