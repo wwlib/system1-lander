@@ -30,10 +30,10 @@
       "type": "choice",
       "instructions": "You are piloting a lunar lander. Determine the magnitude of the thrust needed to slow the descent of the lander based on its altitude.",
       "criteria": {
-        "large": "a lot of thrust is needed because the lander has low altitude and is descending very fast",
-        "medium": "some thrust is needed because the lander has low altitude and is descending slowly, or the pad is still far away and the lander is getting low, or a ridge ahead is higher than the lander",
-        "small": "very little thrust is needed because the lander is descending slowly or has high altitude",
-        "none": "no thrust is needed because the lander is not descending"
+        "large": "a lot of thrust is needed because the lander is near the ground (low altitude) and is descending fast or very fast",
+        "medium": "some thrust is needed because the lander is at medium altitude and is descending fast or very fast, or is near the ground (low altitude) and is descending slowly, or the pad is still far away and the lander is getting low, or a ridge ahead is higher than the lander",
+        "small": "very little thrust is needed because the lander is at high altitude, or is descending slowly or very slowly",
+        "none": "no thrust is needed because the lander is rising"
       }
     }
   },
