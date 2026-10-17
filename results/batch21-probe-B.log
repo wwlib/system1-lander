@@ -1,0 +1,74 @@
+== tev1:4b  prose.json
+✓✓ The pad is directly below.                       dir=none 0.87 vel=none 0.85 (want none/none) 802ms
+✓✓ The pad is very near, just a little to the right. dir=right 0.96 vel=very_slow 0.57 (want right/very_slow) 794ms
+✓✓ The pad is very near, just a little to the left. dir=left 0.97 vel=very_slow 0.57 (want left/very_slow) 802ms
+✓✓ The pad is near, to the right.                   dir=right 0.94 vel=slow 0.57 (want right/slow) 806ms
+✓✓ The pad is near, to the left.                    dir=left 0.87 vel=slow 0.54 (want left/slow) 815ms
+✓✓ The pad is far to the right.                     dir=right 0.97 vel=fast 1.00 (want right/fast) 834ms
+✓✓ The pad is far to the left.                      dir=left 0.83 vel=fast 1.00 (want left/fast) 840ms
+✓✓ The pad is way in the distance to the right.     dir=right 0.99 vel=fast 1.00 (want right/fast) 843ms
+✓✓ The pad is way in the distance to the left.      dir=left 0.99 vel=fast 1.00 (want left/fast) 841ms
+✓ The lander is at high altitude and is rising.                          thrust=none large:0.01 medium:0.03 small:0.14 none:0.82 (want none) 651ms
+✓ The lander is at high altitude and is descending very slowly.          thrust=small large:0.00 medium:0.03 small:0.97 none:0.00 (want small,none) 653ms
+✓ The lander is at high altitude and is descending slowly.               thrust=small large:0.00 medium:0.03 small:0.97 none:0.00 (want small,none) 654ms
+✗ The lander is at high altitude and is descending fast.                 thrust=medium large:0.34 medium:0.65 small:0.01 none:0.00 (want small,none) 644ms
+✓ The lander is at high altitude and is descending very fast.            thrust=medium large:0.47 medium:0.53 small:0.01 none:0.00 (want medium,large) 659ms
+✓ The lander is at medium altitude and is rising.                        thrust=none large:0.01 medium:0.11 small:0.22 none:0.67 (want none) 663ms
+✓ The lander is at medium altitude and is descending very slowly.        thrust=small large:0.00 medium:0.02 small:0.98 none:0.00 (want small) 653ms
+✓ The lander is at medium altitude and is descending slowly.             thrust=small large:0.00 medium:0.02 small:0.98 none:0.00 (want small) 658ms
+✓ The lander is at medium altitude and is descending fast.               thrust=medium large:0.16 medium:0.83 small:0.00 none:0.00 (want medium,small) 647ms
+✓ The lander is at medium altitude and is descending very fast.          thrust=medium large:0.38 medium:0.61 small:0.00 none:0.00 (want large,medium) 650ms
+✗ The lander is near the ground (low altitude) and is rising.            thrust=medium large:0.26 medium:0.48 small:0.01 none:0.24 (want none) 736ms
+✓ The lander is near the ground (low altitude) and is descending very slowly. thrust=medium large:0.01 medium:0.85 small:0.15 none:0.00 (want small,medium) 740ms
+✓ The lander is near the ground (low altitude) and is descending slowly. thrust=medium large:0.01 medium:0.89 small:0.10 none:0.00 (want medium) 652ms
+✓ The lander is near the ground (low altitude) and is descending fast.   thrust=large large:0.98 medium:0.02 small:0.00 none:0.00 (want large) 641ms
+✓ The lander is near the ground (low altitude) and is descending very fast. thrust=large large:0.99 medium:0.01 small:0.00 none:0.00 (want large) 652ms
+✗ The lander is about to touch down and is rising.                       thrust=large large:0.45 medium:0.29 small:0.01 none:0.25 (want none) 635ms
+✓ The lander is about to touch down and is descending very slowly.       thrust=medium large:0.01 medium:0.53 small:0.47 none:0.00 (want small,medium) 654ms
+✓ The lander is about to touch down and is descending slowly.            thrust=medium large:0.02 medium:0.72 small:0.26 none:0.00 (want medium) 640ms
+✓ The lander is about to touch down and is descending fast.              thrust=large large:0.95 medium:0.05 small:0.00 none:0.00 (want large) 630ms
+✓ The lander is about to touch down and is descending very fast.         thrust=large large:0.97 medium:0.02 small:0.00 none:0.00 (want large) 639ms
+scene ✓✓✓ The pad is directly below. The lander is at high altitude and is descending slowly.                            dir=none 0.94 vel=none thrust=small (want none/none/small,none)
+scene ✓✓✓ The pad is directly below. The lander is at medium altitude and is descending fast.                            dir=none 0.92 vel=none thrust=medium (want none/none/medium,small)
+scene ✓✓✓ The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.              dir=none 0.92 vel=none thrust=medium (want none/none/medium)
+scene ✓✓✓ The pad is directly below. The lander is about to touch down and is descending very slowly.                    dir=none 0.96 vel=none thrust=medium (want none/none/small,medium)
+scene ✓✓✓ The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.     dir=right 0.96 vel=very_slow thrust=small (want right/very_slow/small,none)
+scene ✓✓✗ The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.     dir=right 0.97 vel=very_slow thrust=large (want right/very_slow/medium,small)
+scene ✓✓✓ The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly. dir=right 0.98 vel=very_slow thrust=medium (want right/very_slow/medium)
+scene ✓✓✓ The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly. dir=right 0.71 vel=very_slow thrust=medium (want right/very_slow/small,medium)
+scene ✓✓✓ The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.      dir=left 0.98 vel=very_slow thrust=small (want left/very_slow/small,none)
+scene ✓✓✗ The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.      dir=left 0.98 vel=very_slow thrust=large (want left/very_slow/medium,small)
+scene ✓✓✓ The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly. dir=left 0.98 vel=very_slow thrust=medium (want left/very_slow/medium)
+scene ✓✓✓ The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly. dir=left 0.69 vel=very_slow thrust=medium (want left/very_slow/small,medium)
+scene ✓✗✓ The pad is near, to the right. The lander is at high altitude and is descending slowly.                        dir=right 0.78 vel=very_slow thrust=small (want right/slow/small,none)
+scene ✓✓✓ The pad is near, to the right. The lander is at medium altitude and is descending fast.                        dir=right 0.84 vel=slow thrust=medium (want right/slow/medium,small)
+scene ✓✗✓ The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.          dir=right 0.80 vel=very_slow thrust=medium (want right/slow/medium)
+scene ✗✗✓ The pad is near, to the right. The lander is about to touch down and is descending very slowly.                dir=none 0.60 vel=very_slow thrust=small (want right/slow/small,medium)
+scene ✓✗✓ The pad is near, to the left. The lander is at high altitude and is descending slowly.                         dir=left 0.87 vel=very_slow thrust=small (want left/slow/small,none)
+scene ✓✓✓ The pad is near, to the left. The lander is at medium altitude and is descending fast.                         dir=left 0.84 vel=slow thrust=medium (want left/slow/medium,small)
+scene ✓✗✓ The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.           dir=left 0.81 vel=very_slow thrust=medium (want left/slow/medium)
+scene ✗✗✓ The pad is near, to the left. The lander is about to touch down and is descending very slowly.                 dir=none 0.60 vel=very_slow thrust=small (want left/slow/small,medium)
+scene ✓✓✓ The pad is far to the right. The lander is at high altitude and is descending slowly.                          dir=right 0.93 vel=fast thrust=small (want right/fast/small,none)
+scene ✓✓✓ The pad is far to the right. The lander is at medium altitude and is descending fast.                          dir=right 0.95 vel=fast thrust=medium (want right/fast/medium,small)
+scene ✓✓✓ The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.            dir=right 0.91 vel=fast thrust=medium (want right/fast/medium)
+scene ✓✓✓ The pad is far to the right. The lander is about to touch down and is descending very slowly.                  dir=right 0.61 vel=fast thrust=small (want right/fast/small,medium)
+scene ✓✓✓ The pad is far to the left. The lander is at high altitude and is descending slowly.                           dir=left 0.86 vel=fast thrust=small (want left/fast/small,none)
+scene ✓✓✓ The pad is far to the left. The lander is at medium altitude and is descending fast.                           dir=left 0.88 vel=fast thrust=medium (want left/fast/medium,small)
+scene ✓✓✓ The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.             dir=left 0.85 vel=fast thrust=medium (want left/fast/medium)
+scene ✓✓✓ The pad is far to the left. The lander is about to touch down and is descending very slowly.                   dir=left 0.47 vel=fast thrust=small (want left/fast/small,medium)
+scene ✓✓✓ The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.          dir=right 0.94 vel=fast thrust=small (want right/fast/small,none)
+scene ✓✓✓ The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.          dir=right 0.97 vel=fast thrust=medium (want right/fast/medium,small)
+scene ✓✓✓ The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly. dir=right 0.94 vel=fast thrust=medium (want right/fast/medium)
+scene ✓✓✓ The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.  dir=right 0.52 vel=fast thrust=small (want right/fast/small,medium)
+scene ✓✓✓ The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.           dir=left 0.95 vel=fast thrust=small (want left/fast/small,none)
+scene ✓✓✓ The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.           dir=left 0.96 vel=fast thrust=medium (want left/fast/medium,small)
+scene ✓✓✓ The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly. dir=left 0.91 vel=fast thrust=medium (want left/fast/medium)
+scene ✗✓✓ The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.   dir=none 0.51 vel=fast thrust=small (want left/fast/small,medium)
+  drift: The pad is near, to the right. The lander is drifting to the left very fast.     dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left fast.          dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the left slowly.        dir=right vel=slow
+  drift: The pad is near, to the right. The lander is not drifting sideways.              dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right slowly.       dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right fast.         dir=right vel=slow
+  drift: The pad is near, to the right. The lander is drifting to the right very fast.    dir=right vel=slow
+SUMMARY tev1:4b: direction 9/9, velocity 9/9, thrust 17/20; full scenes: direction 33/36, velocity 30/36, thrust 34/36; median 1447 ms

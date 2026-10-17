@@ -39,17 +39,49 @@ export const PAD = { x0: 120, x1: 150, y: 10 };
 export const PAD_CENTER_X = (PAD.x0 + PAD.x1) / 2;
 
 /**
- * Ground height at a horizontal position. Flat on the pad, bumpy elsewhere.
+ * Every landing pad. The terrain is flattened around each one (see APPROACH).
+ * @type {{ x0: number, x1: number, y: number }[]}
+ */
+export const PADS = [PAD];
+
+/**
+ * Approach zones beside every pad. The model cannot see terrain, so no bump may stand near a pad.
+ * Within `flat` m of a pad edge the ground is pad height; over the next `ramp` m the bumps grow back
+ * smoothly to full size.
+ */
+export const APPROACH = { flat: 20, ramp: 25 };
+
+/**
+ * How much of the full bump height is allowed at x: 0 next to a pad, 1 far from every pad.
+ * @param {number} x
+ * @returns {number}
+ */
+export function bumpScale(x) {
+  let scale = 1;
+  for (const pad of PADS) {
+    const distanceFromPad = Math.max(0, pad.x0 - x, x - pad.x1);
+    const intoRamp = (distanceFromPad - APPROACH.flat) / APPROACH.ramp;
+    const ramp = Math.min(1, Math.max(0, intoRamp));
+    const smoothRamp = ramp * ramp * (3 - 2 * ramp);
+    scale = Math.min(scale, smoothRamp);
+  }
+  return scale;
+}
+
+/**
+ * Ground height at a horizontal position. Flat on and beside each pad, bumpy farther away.
  * @param {number} x
  * @returns {number}
  */
 export function terrainY(x) {
-  if (x >= PAD.x0 && x <= PAD.x1) {
-    return PAD.y;
+  for (const pad of PADS) {
+    if (x >= pad.x0 && x <= pad.x1) {
+      return pad.y;
+    }
   }
   const bigBumps = 8 * Math.abs(Math.sin(x * 0.07));
   const smallBumps = 4 * Math.abs(Math.sin(x * 0.23));
-  return PAD.y + bigBumps + smallBumps;
+  return PAD.y + bumpScale(x) * (bigBumps + smallBumps);
 }
 
 /** Touchdown limits for the shock-absorbing legs: stay under all three to survive. */

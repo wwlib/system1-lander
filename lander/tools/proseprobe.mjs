@@ -132,6 +132,34 @@ function buildAltitudeCases() {
 
 const padCases = buildPadCases();
 const altitudeCases = buildAltitudeCases();
+/**
+ * Full in-flight scenes: every pad sentence (both sides) with several altitude sentences, asked with
+ * all the questions in one call, exactly as a flight asks them.
+ * @returns {{ sentence: string, direction: string, velocities: string[], thrust: string[] }[]}
+ */
+function buildSceneCases() {
+  /** @type {[number, number, string, string][]} altitude, vertical speed, altitude band, fall band */
+  const altitudes = [
+    [100, -2, 'high', 'slow'],
+    [40, -4.5, 'medium', 'fast'],
+    [15, -2, 'low', 'slow'],
+    [2, -0.5, 'touch', 'vslow'],
+  ];
+  const cases = [];
+  for (const padCase of padCases) {
+    for (const [altitude, verticalSpeed, altitudeBand, fallBand] of altitudes) {
+      cases.push({
+        sentence: padCase.sentence + ' ' + altSentence(altitude, verticalSpeed),
+        direction: padCase.direction,
+        velocities: padCase.velocities,
+        thrust: expectedThrust(altitudeBand, fallBand),
+      });
+    }
+  }
+  return cases;
+}
+
+const sceneCases = buildSceneCases();
 const driftCases = [-4, -2, -0.8, 0, 0.8, 2, 4].map((horizontalSpeed) => ({
   sentence: padSentence(25) + ' ' + driftSentence(horizontalSpeed),
   direction: 'right',
@@ -183,6 +211,27 @@ async function probeModel(model) {
     );
   }
 
+  const sceneCorrect = { direction: 0, velocity: 0, thrust: 0 };
+  for (const sceneCase of sceneCases) {
+    const result = await ask(model, sceneCase.sentence, allQuestions);
+    latencies.push(result.ms);
+    const direction = result.answers.flight_direction;
+    const velocity = result.answers.flight_velocity;
+    const thrust = result.answers.downward_thrust_magnitude;
+    const directionOk = direction.choice === sceneCase.direction;
+    const velocityOk = sceneCase.velocities.includes(velocity.choice);
+    const thrustOk = sceneCase.thrust.includes(thrust.choice);
+    sceneCorrect.direction = sceneCorrect.direction + (directionOk ? 1 : 0);
+    sceneCorrect.velocity = sceneCorrect.velocity + (velocityOk ? 1 : 0);
+    sceneCorrect.thrust = sceneCorrect.thrust + (thrustOk ? 1 : 0);
+    const directionP = direction.probabilities[direction.choice].toFixed(2);
+    console.log(
+      `scene ${mark(directionOk)}${mark(velocityOk)}${mark(thrustOk)} ${sceneCase.sentence.padEnd(110)} ` +
+        `dir=${direction.choice} ${directionP} vel=${velocity.choice} thrust=${thrust.choice} ` +
+        `(want ${sceneCase.direction}/${sceneCase.velocities}/${sceneCase.thrust})`,
+    );
+  }
+
   for (const driftCase of driftCases) {
     const result = await ask(model, driftCase.sentence, horizontalQuestions);
     latencies.push(result.ms);
@@ -196,7 +245,10 @@ async function probeModel(model) {
   console.log(
     `SUMMARY ${model}: direction ${correct.direction}/${padCases.length}, ` +
       `velocity ${correct.velocity}/${padCases.length}, ` +
-      `thrust ${correct.thrust}/${altitudeCases.length}, median ${median} ms`,
+      `thrust ${correct.thrust}/${altitudeCases.length}; ` +
+      `full scenes: direction ${sceneCorrect.direction}/${sceneCases.length}, ` +
+      `velocity ${sceneCorrect.velocity}/${sceneCases.length}, ` +
+      `thrust ${sceneCorrect.thrust}/${sceneCases.length}; median ${median} ms`,
   );
 }
 

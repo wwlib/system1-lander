@@ -110,6 +110,26 @@ So on the Mac, a real new decision costs about 1.2 s, and the ~10 ms figure is t
 
 Flights at the 4/s default (Mac, seeds 1–6): landed 4/6, avg score 4.48, 72% fuel left, actual 1.7/s. The Mac was also serving gemma4:12b-mlx for another task at the time, and some calls stalled for 2–22 s.
 
+### Prompt tuning and flat approach zones (Mac, tev1:4b, prose, random seeds 1–6, 4/s)
+
+The Mac had only tev1:4b and a small embedding model loaded for most runs; gemma4:12b-mlx was loaded briefly during variant B. `tools/proseprobe.mjs` now also asks full in-flight scenes (pad sentence + altitude sentence, all three questions in one call, both sides).
+
+| prose.json | probe dir / vel / thrust (isolated) | full scenes dir / vel / thrust (of 36) | landed | avg score |
+|---|---|---|---|---|
+| before | 9/9, 6/9, 12/20 | 33, 24, 18 | 4/6 | 4.85 |
+| B: thrust criteria rewritten to match the probe | 9/9, 9/9, 17/20 | 33, 30, 34 | 1/6 | 1.40 |
+| C: velocity wording only | 9/9, 9/9 (thrust as before) | 33, 30 (thrust as before) | 5/6, 5/6 | 5.70, 5.85 |
+| D: C + "more thrust if the pad is far and the ship is low" in the instructions | – | – | 1/6 | 1.23 |
+| **F: C + pad-aware `medium` criterion** (current) | 9/9, 9/9, 13/20 | 33, 30, 21 | 5/6 | 5.60 |
+| **F + flat approach zones** (current default) | | | **6/6** | **6.85** |
+
+- **Direction was healthy all along.** Both sides got it right, in isolation and in full scenes. The only misses were `none` when about to touch down, where code levels the ship anyway. Rewording the direction criteria with "because the pad is to the right" broke it (4/9, with mirrored flips), so that wording was reverted.
+- **Velocity:** "very near, just a little to one side" in the `very_slow` criterion fixed "very near → slow (2 m/s)", one cause of touching down sideways at more than 2 m/s.
+- **Thrust: probe accuracy is not landing success.** Criteria that "fixed" the probe (medium when descending slowly near the ground, thrust while rising) made the ship hover until the tank was empty: medium (0.55) is above hover (0.41). The kept change only adds "or the pad is still far away and the lander is getting low" to `medium`, so the model weighs both sentences. That got seed 1, the usual crash, to land.
+- **Flat approach zones** (`APPROACH` in `sim.mjs`): the model cannot see terrain. The ground is now pad height within 20 m of every pad edge (`PADS`), and the bumps grow back smoothly over the next 25 m. This applies to every start, random or fixed.
+
+Logs: `results/batch21-*.log`.
+
 ## Playground
 
 `/playground` sends any `/v1/systemone` request through the server (no CORS issue; input is validated).
