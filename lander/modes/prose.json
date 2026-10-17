@@ -50,7 +50,7 @@
     }
   },
   "final_approach": {
-    "about": "Asked instead of `questions` in the final-approach zone (below 18 m over the target pad, within 15 m of its edges). The state then describes where the legs are relative to the pad edges, height, sink rate, sideways slide and lean.",
+    "about": "Asked instead of `questions` in the final-approach zone (below 18 m over the target pad, within 15 m of its edges). The state then describes where the legs are relative to the pad edges, height, sink rate, sideways slide and lean. legs_about_to_touch is the model's own touchdown call: when it says yes (≥ 0.9), the lander stops leaning and comes down upright.",
     "questions": {
       "flight_direction": {
         "type": "choice",
@@ -77,6 +77,14 @@
           "medium": "some thrust is needed because the lander is dropping fast or sinking steadily",
           "small": "very little thrust is needed because the lander is settling gently",
           "none": "no thrust is needed because the lander is rising"
+        }
+      },
+      "legs_about_to_touch": {
+        "type": "noul",
+        "instructions": "Are the lander's legs about to touch the pad?",
+        "criteria": {
+          "true": "yes: you are almost touching the pad, or a couple of meters above the pad",
+          "false": "no: you are a few meters, a little way or some way above the pad"
         }
       }
     }

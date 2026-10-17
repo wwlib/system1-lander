@@ -311,10 +311,10 @@ export function footingSentence(ship, pad) {
  */
 export function heightSentence(heightAbovePad) {
   if (heightAbovePad < 1.5) {
-    return 'You are almost touching the pad.';
+    return 'You are almost touching the pad; your legs are about to touch it.';
   }
   if (heightAbovePad < 4) {
-    return 'You are a couple of meters above the pad.';
+    return 'You are a couple of meters above the pad; your legs are about to touch it.';
   }
   if (heightAbovePad < 8) {
     return 'You are a few meters above the pad.';
@@ -377,7 +377,7 @@ export function slideSentence(ship, pad) {
 }
 
 /**
- * The lean: "You are leaning left." / "You are upright."
+ * The lean: "You are leaning left; your legs are not level." / "You are upright."
  * @param {number} angle  rad (+ = leaning right)
  * @returns {string}
  */
@@ -386,7 +386,7 @@ export function leanSentence(angle) {
     return 'You are upright.';
   }
   const side = angle > 0 ? 'right' : 'left';
-  return `You are leaning ${side}.`;
+  return `You are leaning ${side}; your legs are not level.`;
 }
 
 /**
@@ -532,11 +532,24 @@ export const LEVEL = { none: 0, small: 0.3, medium: 0.55, large: 1 };
 /** The prose-mode control table, shown in the game's System 1 panel. */
 export const PROSE_TABLE = [
   'target vx = sign(flight_direction: right +1, left −1, none 0) × speed(flight_velocity: fast 4, slow 2, very_slow 0.8, none 0 m/s)',
-  'tilt toward (target vx − actual vx) if the gap > 0.4 m/s, else center',
+  'tilt toward (target vx − actual vx) if the gap > 0.4 m/s, else center; center when legs_about_to_touch ≥ 0.9 (final approach)',
   'pads layout: pad_choice (own call, every few s until near and low) picks the target pad; distances and altitude are to that pad',
   'final approach (< 18 m above the target pad, within 15 m of its edges): the scene switches to legs vs pad edges, fine height, sink and slide impressions, lean; questions from final_approach in prose.json',
   'throttle = Σ P(level) × {none 0, small 0.3, medium 0.55, large 1}  (expected value of the choice probabilities; hover ≈ 0.41)',
 ];
+
+/** legs_about_to_touch at or above this counts as yes (the model says about 0.96–0.99 under 4 m, at most 0.86 above). */
+export const TOUCH_YES = 0.9;
+
+/**
+ * Did the model judge that the legs are about to touch the pad (final-approach question)?
+ * @param {Record<string, any>} answers
+ * @returns {boolean}
+ */
+export function legsAboutToTouch(answers) {
+  const value = answers.legs_about_to_touch?.noul;
+  return typeof value === 'number' && value >= TOUCH_YES;
+}
 
 /**
  * Turn the model's three choices into controls.
@@ -557,13 +570,18 @@ export function proseMap(answers, ship) {
   const speed = SPEED[/** @type {keyof typeof SPEED} */ (speedChoice)] ?? 0;
   const targetSidewaysSpeed = directionSign * speed;
 
-  // Tilt toward the target speed when it is more than 0.4 m/s away. (Leveling for touchdown is the
-  // pilot loop's touchdownLevel assist, not part of this mapping.)
+  // Tilt toward the target speed when it is more than 0.4 m/s away.
   const speedGap = targetSidewaysSpeed - ship.vx;
   /** @type {Tilt} */
   let tilt = 'center';
   if (Math.abs(speedGap) > 0.4) {
     tilt = speedGap > 0 ? 'right' : 'left';
+  }
+  // The model's own touchdown call (final approach): when it judges the legs are about to touch,
+  // the lander stops leaning, whatever the sideways speed. (The pilot loop's touchdownLevel assist
+  // is the code version of this; see pilot-loop.mjs.)
+  if (legsAboutToTouch(answers)) {
+    tilt = 'center';
   }
 
   // Throttle is the expected value over the thrust choices, using their probabilities.

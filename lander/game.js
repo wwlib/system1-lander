@@ -783,11 +783,17 @@ function padChoiceHTML(pad) {
 function proseHowHTML(decision) {
   const upstream = decision.upstream;
   const body = JSON.parse(upstream.body);
-  const answerRows = Object.entries(decision.answers).map(
-    ([question, answer]) =>
+  const answerRows = Object.entries(decision.answers).map(([question, answer]) => {
+    // A yes/no (noul) answer is a single value, e.g. legs_about_to_touch 0.97.
+    if (typeof answer.noul === 'number') {
+      const yesNo = answer.noul >= 0.5 ? 'yes' : 'no';
+      return `<tr><td>${esc(question)}</td><td><b>${yesNo}</b></td><td>${answer.noul.toFixed(2)}</td></tr>`;
+    }
+    return (
       `<tr><td>${esc(question)}</td><td><b>${esc(answer.choice)}</b></td>` +
-      `<td>${probabilityList(answer.probabilities)}</td></tr>`,
-  );
+      `<td>${probabilityList(answer.probabilities)}</td></tr>`
+    );
+  });
   const questionNotes = Object.entries(body.questions).map(
     ([question, details]) =>
       `<div class="meta"><b>${esc(question)}</b> (${esc(details.type)}): ` +

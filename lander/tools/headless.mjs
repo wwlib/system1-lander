@@ -134,6 +134,10 @@ const totals = {
 function traceDecision(ship, decision) {
   const choices = [];
   for (const [question, answer] of Object.entries(decision.answers || {})) {
+    if (typeof answer?.noul === 'number') {
+      choices.push(`${question}=${answer.noul.toFixed(2)}`);
+      continue;
+    }
     const probability = answer?.probabilities?.[answer?.choice];
     const shown = probability != null ? ' ' + probability.toFixed(2) : '';
     choices.push(`${question.split('_')[0]}=${answer?.choice}${shown}`);
