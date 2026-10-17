@@ -532,7 +532,7 @@ export const LEVEL = { none: 0, small: 0.3, medium: 0.55, large: 1 };
 /** The prose-mode control table, shown in the game's System 1 panel. */
 export const PROSE_TABLE = [
   'target vx = sign(flight_direction: right +1, left −1, none 0) × speed(flight_velocity: fast 4, slow 2, very_slow 0.8, none 0 m/s)',
-  'tilt toward (target vx − actual vx) if the gap > 0.4 m/s, else center; center below 4 m (touch down upright)',
+  'tilt toward (target vx − actual vx) if the gap > 0.4 m/s, else center',
   'pads layout: pad_choice (own call, every few s until near and low) picks the target pad; distances and altitude are to that pad',
   'final approach (< 18 m above the target pad, within 15 m of its edges): the scene switches to legs vs pad edges, fine height, sink and slide impressions, lean; questions from final_approach in prose.json',
   'throttle = Σ P(level) × {none 0, small 0.3, medium 0.55, large 1}  (expected value of the choice probabilities; hover ≈ 0.41)',
@@ -557,16 +557,13 @@ export function proseMap(answers, ship) {
   const speed = SPEED[/** @type {keyof typeof SPEED} */ (speedChoice)] ?? 0;
   const targetSidewaysSpeed = directionSign * speed;
 
-  // Tilt toward the target speed when it is more than 0.4 m/s away; level out for touchdown.
+  // Tilt toward the target speed when it is more than 0.4 m/s away. (Leveling for touchdown is the
+  // pilot loop's touchdownLevel assist, not part of this mapping.)
   const speedGap = targetSidewaysSpeed - ship.vx;
   /** @type {Tilt} */
   let tilt = 'center';
   if (Math.abs(speedGap) > 0.4) {
     tilt = speedGap > 0 ? 'right' : 'left';
-  }
-  const altitude = ship.y - targetPad(ship).y;
-  if (altitude >= 0 && altitude < 4) {
-    tilt = 'center';
   }
 
   // Throttle is the expected value over the thrust choices, using their probabilities.

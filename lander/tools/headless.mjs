@@ -11,11 +11,15 @@
 //   RANDOM_START=1 SEED=N COUNT=6
 //                   instead fly COUNT random starts with seeds N, N+1, … (sim.mjs randomStart;
 //                   the same starts as the game's ?seed=N)
-//   Pilot loop (defaults from pilot-loop.mjs):
-//   DECISION_RATE=4 (calls per sim second; max = no limit, tests only)  SMOOTHING=1  LATENCY_COMP=1  IMPULSE_LIMITS=1
+//   Pilot loop (defaults from pilot-loop.mjs DEFAULT_SETTINGS; each assist can be switched alone):
+//   DECISION_RATE=4 (calls per sim second; max = no limit, tests only)
+//   SMOOTHING  PREDICT  STALE_DISCARD  LEASE  CLIMB_GUARD  TOUCHDOWN_LEVEL   (1/0)
+//   groups: ASSISTS=0 (all off)  LATENCY_COMP=0 (predict + stale discard)
+//           IMPULSE_LIMITS=0 (lease + climb guard + touchdown level); single flags win over groups
 //   TILT_RATE=2     tilt slew limit with smoothing on, rad/s
 //   SAME_SCENE_SKIP=1  reuse the last prose answer for an identical body (< 1 sim s old)
 //   DELAY_MS=0      artificial extra latency added to every reply (simulates a slow host)
+//   TRACE=1         print one line per decision: time, height, speeds, tilt, throttle, choices, scene
 
 import '../env.mjs';
 import { newState, modelState, randomStart } from '../sim.mjs';
@@ -23,8 +27,9 @@ import { decide, DEFAULTS } from '../server.mjs';
 import {
   createPilotLoop,
   parseRate,
-  parseFlag,
   rateLabel,
+  assistSummary,
+  settingsFromFlags,
   DEFAULT_SETTINGS,
 } from '../pilot-loop.mjs';
 
@@ -38,6 +43,7 @@ const DELAY_MS = Number(process.env.DELAY_MS || 0);
 const FLY_AWAY_HEIGHT = 250;
 
 const LAYOUT = process.env.LAYOUT || 'classic';
+const TRACE = process.env.TRACE === '1';
 
 const options = {
   variant: process.env.VARIANT || DEFAULTS.variant,
@@ -47,9 +53,7 @@ const options = {
 
 const pilotSettings = {
   rate: parseRate(process.env.DECISION_RATE) ?? DEFAULT_SETTINGS.rate,
-  smoothing: parseFlag(process.env.SMOOTHING, DEFAULT_SETTINGS.smoothing),
-  latencyComp: parseFlag(process.env.LATENCY_COMP, DEFAULT_SETTINGS.latencyComp),
-  impulseLimits: parseFlag(process.env.IMPULSE_LIMITS, DEFAULT_SETTINGS.impulseLimits),
+  ...settingsFromFlags((name) => process.env[name]),
   tiltRate: Number(process.env.TILT_RATE) || DEFAULT_SETTINGS.tiltRate,
 };
 
@@ -119,7 +123,29 @@ const totals = {
   skipped: 0,
   scenes: /** @type {number[]} */ ([]),
   pads: /** @type {string[]} */ ([]),
+  /** Assist engagement summed over all flights (events and seconds). */
+  engagement: { leaseEvents: 0, leaseSeconds: 0, climbGuardEvents: 0, climbGuardSeconds: 0, levelEvents: 0, levelSeconds: 0 },
 };
+
+/**
+ * One trace line for a decision (TRACE=1).
+ * @param {Ship} ship @param {Record<string, any>} decision
+ */
+function traceDecision(ship, decision) {
+  const choices = [];
+  for (const [question, answer] of Object.entries(decision.answers || {})) {
+    const probability = answer?.probabilities?.[answer?.choice];
+    const shown = probability != null ? ' ' + probability.toFixed(2) : '';
+    choices.push(`${question.split('_')[0]}=${answer?.choice}${shown}`);
+  }
+  const scene = String(decision.upstream?.request?.state || '').replace(/\n/g, ' | ');
+  const sameScene = decision.sameScene ? ' (same scene)' : '';
+  console.log(
+    `  t=${ship.t.toFixed(1)} y=${ship.y.toFixed(1)} vx=${ship.vx.toFixed(2)} vy=${ship.vy.toFixed(2)} ` +
+      `angle=${ship.angle.toFixed(2)} fuel=${ship.fuel.toFixed(0)} throttle=${decision.throttle} tilt=${decision.tilt} ` +
+      `${choices.join(' ')}${sameScene} :: ${scene}`,
+  );
+}
 
 /**
  * Fly one start to an outcome and print one line about it.
@@ -181,6 +207,9 @@ async function flyOne(start) {
     if (!ship.outcome) {
       loop.receive(call, decision, ship);
     }
+    if (TRACE) {
+      traceDecision(ship, decision);
+    }
     if (decision.pad) {
       padPicks.push(`t=${decision.pad.t.toFixed(1)} ${decision.pad.target} ${decision.pad.confidence.toFixed(2)}`);
     }
@@ -204,6 +233,13 @@ async function flyOne(start) {
   totals.discarded = totals.discarded + loop.stats.discarded;
   totals.scenes.push(scenes.size);
   totals.skipped = totals.skipped + sameSceneSkips;
+  for (const key of Object.keys(totals.engagement)) {
+    totals.engagement[key] = totals.engagement[key] + loop.stats[key];
+  }
+  const engaged =
+    `lease=${loop.stats.leaseEvents}/${loop.stats.leaseSeconds.toFixed(1)}s ` +
+    `climb=${loop.stats.climbGuardEvents}/${loop.stats.climbGuardSeconds.toFixed(1)}s ` +
+    `level=${loop.stats.levelEvents}/${loop.stats.levelSeconds.toFixed(1)}s`;
 
   const score = (ship.score ?? 0).toFixed(1);
   const breakdown = ship.outcome === 'LANDED' ? ' ' + JSON.stringify(ship.scoreBreakdown) : '';
@@ -223,7 +259,7 @@ async function flyOne(start) {
       `avgthr=${(throttleSum / Math.max(1, latencies.length)).toFixed(2)} ` +
       `rate=${loop.actualRate(ship).toFixed(1)}/s discarded=${loop.stats.discarded} ` +
       `scenes=${scenes.size} skipped=${sameSceneSkips} ` +
-      `maxalt=${altitudeReached.toFixed(0)}m${flewAway ? ' FLEW-AWAY' : ''}${padReport}`,
+      `maxalt=${altitudeReached.toFixed(0)}m${flewAway ? ' FLEW-AWAY' : ''} assists[${engaged}]${padReport}`,
   );
 }
 
@@ -241,10 +277,11 @@ console.log(
     `avg score ${average(totals.scores).toFixed(2)}, ` +
     `avg fuel left ${average(totals.fuels).toFixed(0)}%, ` +
     `rate ${rateLabel(pilotSettings.rate)} → actual ${average(totals.rates).toFixed(1)}/s, ` +
-    `smoothing ${pilotSettings.smoothing ? 'on' : 'off'}, ` +
-    `latencyComp ${pilotSettings.latencyComp ? 'on' : 'off'}, ` +
-    `impulse ${pilotSettings.impulseLimits ? 'on' : 'off'}, delay ${DELAY_MS} ms, ` +
+    `assists: ${assistSummary(pilotSettings)}, delay ${DELAY_MS} ms, ` +
     `discarded ${totals.discarded}, flew away ${totals.flewAway}, ` +
-    `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}` +
+    `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}, ` +
+    `engaged: lease ${totals.engagement.leaseEvents}×/${totals.engagement.leaseSeconds.toFixed(1)}s ` +
+    `climb ${totals.engagement.climbGuardEvents}×/${totals.engagement.climbGuardSeconds.toFixed(1)}s ` +
+    `level ${totals.engagement.levelEvents}×/${totals.engagement.levelSeconds.toFixed(1)}s` +
     (LAYOUT !== 'classic' ? `, layout ${LAYOUT}, landed on [${totals.pads.join(', ')}]` : ''),
 );

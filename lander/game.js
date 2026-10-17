@@ -5,15 +5,17 @@
 //
 // URL parameters: ?seed=N (replay a random start), ?random=0|1, ?pads=0|1 (choose a landing pad,
 // prose mode only), ?redact=1 (mask IPs in screenshots),
-// pilot loop: ?rate=1|2|4|5|10 ?smooth=0|1 ?comp=0|1 ?impulse=0|1 ?delay=ms (artificial lag).
+// pilot loop: ?rate=1|2|4|5|10 ?delay=ms (artificial lag), and one switch per code assist:
+// ?smooth= ?predict= ?stale= ?lease= ?climb= ?level= (0|1), groups ?assists=0 ?comp=0 ?impulse=0.
 
 import { newState, step, terrainY, PAD, W, ACTIONS, randomStart, padsFor, targetPad } from './sim.mjs';
 import {
   createPilotLoop,
   uiRate,
-  parseFlag,
   rateLabel,
+  settingsFromFlags,
   RATE_CHOICES,
+  ASSISTS,
   DEFAULT_SETTINGS,
 } from './pilot-loop.mjs';
 
@@ -129,11 +131,28 @@ function savedSetting(urlKey, storageKey) {
   return urlParams.get(urlKey) ?? localStorage.getItem('lander.' + storageKey);
 }
 
+/** URL / storage key per assist ('assists', 'comp' and 'impulse' are URL-only groups). */
+const ASSIST_URL_KEYS = { all: 'assists', latencyComp: 'comp', impulseLimits: 'impulse' };
+for (const assist of ASSISTS) {
+  ASSIST_URL_KEYS[assist.key] = assist.url;
+}
+const GROUP_URL_KEYS = ['assists', 'comp', 'impulse'];
+
+/**
+ * One assist flag: the URL parameter, else the saved checkbox (single assists only).
+ * Saved values live under 'lander.assist.<key>' so settings saved by older versions do not apply.
+ * @param {string} urlKey
+ */
+function assistFlag(urlKey) {
+  if (GROUP_URL_KEYS.includes(urlKey)) {
+    return urlParams.get(urlKey);
+  }
+  return urlParams.get(urlKey) ?? localStorage.getItem('lander.assist.' + urlKey);
+}
+
 const pilotSettings = {
   rate: uiRate(savedSetting('rate', 'rate')),
-  smoothing: parseFlag(savedSetting('smooth', 'smooth'), DEFAULT_SETTINGS.smoothing),
-  latencyComp: parseFlag(savedSetting('comp', 'comp'), DEFAULT_SETTINGS.latencyComp),
-  impulseLimits: parseFlag(savedSetting('impulse', 'impulse'), DEFAULT_SETTINGS.impulseLimits),
+  ...settingsFromFlags(assistFlag, ASSIST_URL_KEYS),
 };
 /** Artificial extra latency per reply, ms (for testing slow hosts; not saved). */
 const DELAY_MS = Number(urlParams.get('delay') || 0);
@@ -1029,18 +1048,16 @@ function pilotRowsHTML() {
   if (pilot.stats.climbGuardActive) {
     flags.push('<span class="on">climb guard</span>');
   }
+  if (pilot.stats.levelling) {
+    flags.push('<span class="on">touchdown leveling</span>');
+  }
   const onOff = (/** @type {boolean} */ value) => (value ? 'on' : 'off');
   return (
     hudRow(
       ['decisions/s', `${rateLabel(settings.rate)} → ${actual}`],
       ['throttle', `${throttlePercent} (target ${targetPercent})`],
     ) +
-    hudRow(
-      ['smooth', onOff(settings.smoothing)],
-      ['comp', onOff(settings.latencyComp)],
-      ['impulse', onOff(settings.impulseLimits)],
-      ['delay', DELAY_MS + ' ms'],
-    ) +
+    hudRow(['code assists on', assistsOnText(settings)], ['delay', DELAY_MS + ' ms']) +
     hudRow(
       ['age', pilot.stats.lastAge.toFixed(2) + ' s'],
       ['discarded', String(pilot.stats.discarded)],
@@ -1048,6 +1065,18 @@ function pilotRowsHTML() {
     ) +
     (flags.length ? `<div class="r">${flags.join(' · ')}</div>` : '')
   );
+}
+
+/**
+ * The code assists that are on, by name, or "none (model only)".
+ * @param {Record<string, any>} settings
+ */
+function assistsOnText(settings) {
+  const names = ASSISTS.filter((assist) => settings[assist.key]).map((assist) => assist.label);
+  if (!names.length) {
+    return 'none (model only)';
+  }
+  return names.join(', ');
 }
 
 // ---- Pilot loop controls ----
@@ -1069,19 +1098,20 @@ function setUpPilotControls() {
     event.target.blur();
   };
 
-  /** @type {[string, 'smoothing' | 'latencyComp' | 'impulseLimits', string][]} */
-  const toggles = [
-    ['smooth', 'smoothing', 'smooth'],
-    ['comp', 'latencyComp', 'comp'],
-    ['impulse', 'impulseLimits', 'impulse'],
-  ];
-  for (const [elementId, settingKey, storageKey] of toggles) {
-    const checkbox = byId(elementId);
-    checkbox.checked = pilotSettings[settingKey];
+  // One checkbox per code assist (see ASSISTS in pilot-loop.mjs).
+  const assistBox = byId('assists');
+  assistBox.innerHTML = ASSISTS.map(
+    (assist) =>
+      `<label style="background:#0008;padding:2px" title="code assist (${assist.kind}); ?${assist.url}=0|1">` +
+      `<input type="checkbox" id="assist-${assist.url}"> ${assist.label}</label>`,
+  ).join(' ');
+  for (const assist of ASSISTS) {
+    const checkbox = byId('assist-' + assist.url);
+    checkbox.checked = !!pilotSettings[assist.key];
     checkbox.onchange = (/** @type {any} */ event) => {
-      pilotSettings[settingKey] = event.target.checked;
-      pilot.settings[settingKey] = event.target.checked;
-      localStorage.setItem('lander.' + storageKey, event.target.checked ? '1' : '0');
+      pilotSettings[assist.key] = event.target.checked;
+      pilot.settings[assist.key] = event.target.checked;
+      localStorage.setItem('lander.assist.' + assist.url, event.target.checked ? '1' : '0');
       event.target.blur();
     };
   }
@@ -1282,7 +1312,7 @@ function frame(now) {
   }
   if (!paused) {
     if (aiPiloting) {
-      // The pilot loop eases toward the model's targets and applies the impulse limits.
+      // The pilot loop eases toward the model's targets and applies whichever code assists are on.
       pilot.stepShip(ship, timeStep);
     } else {
       step(ship, timeStep, thrust, /** @type {any} */ (tilt));
