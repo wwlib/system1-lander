@@ -3,7 +3,7 @@
 // at a sample state), the playground prose examples, hello.mjs, and two non-game sanity checks.
 
 import { newState, DATA_QUESTIONS } from './sim.mjs';
-import { proseSet, perceive } from './prose.mjs';
+import { proseSet, perceive, padChoiceState } from './prose.mjs';
 import { POLICY_QUESTIONS, policyNames, policyText, shipJSON } from './policy.mjs';
 
 /**
@@ -132,6 +132,30 @@ export function examples() {
     horizontalQuestions,
     'original playground example',
   );
+  addExample(
+    'prose',
+    'mirrored: pad off to the left, drifting away',
+    perceive(newState({ x: 195, y: 90, vx: 1.5, vy: -2 }), proseQuestions),
+    allProseQuestions,
+    'the side is stated twice; drift is toward / away from the pad',
+  );
+  if (proseQuestions.pad_choice) {
+    const padQuestion = { landing_pad: proseQuestions.pad_choice.question };
+    const choosePadShips = [
+      ['choose pad: ridge near, plenty of fuel', newState({ x: 150, y: 80, fuel: 90, layout: 'pads' })],
+      ['choose pad: narrow near, low fuel', newState({ x: 60, y: 100, fuel: 25, layout: 'pads' })],
+      ['choose pad: heading for the wide pad', newState({ x: 120, y: 130, fuel: 80, layout: 'pads', target: 'wide' })],
+    ];
+    for (const [name, padShip] of choosePadShips) {
+      addExample(
+        'prose',
+        /** @type {string} */ (name),
+        padChoiceState(/** @type {any} */ (padShip)),
+        padQuestion,
+        'pads layout (?pads=1): the landing-pad choice, asked in its own call every few seconds',
+      );
+    }
+  }
   for (const sentence of ORIGINAL_PROSE_EXAMPLES) {
     const name = sentence.replace('The lander is ', '');
     addExample('prose', name, sentence, thrustQuestions, 'original playground example');

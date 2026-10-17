@@ -3,10 +3,11 @@
 // call is in flight, POSTs the ship state to /decide. The reply's controls are applied when it
 // arrives, so model latency is visible as lag. The right panel shows every call.
 //
-// URL parameters: ?seed=N (replay a random start), ?random=0|1, ?redact=1 (mask IPs in screenshots),
+// URL parameters: ?seed=N (replay a random start), ?random=0|1, ?pads=0|1 (choose a landing pad,
+// prose mode only), ?redact=1 (mask IPs in screenshots),
 // pilot loop: ?rate=1|2|4|5|10 ?smooth=0|1 ?comp=0|1 ?impulse=0|1 ?delay=ms (artificial lag).
 
-import { newState, step, terrainY, PAD, W, ACTIONS, randomStart } from './sim.mjs';
+import { newState, step, terrainY, PAD, W, ACTIONS, randomStart, padsFor, targetPad } from './sim.mjs';
 import {
   createPilotLoop,
   uiRate,
@@ -114,6 +115,10 @@ let urlSeed = urlParams.has('seed') ? Number(urlParams.get('seed')) >>> 0 : null
 let randomStartOn = urlParams.has('random')
   ? urlParams.get('random') !== '0'
   : urlSeed != null || localStorage.getItem('lander.random') === '1';
+/** Choose landing pad: three pads with rewards; the model picks one (prose mode only). */
+let padsOn = urlParams.has('pads')
+  ? urlParams.get('pads') !== '0'
+  : localStorage.getItem('lander.pads') === '1';
 // ?redact=1 masks IPv4 host addresses (for screenshots).
 const REDACT = new URLSearchParams(location.search).has('redact');
 
@@ -252,6 +257,12 @@ function chooseStart() {
   return start;
 }
 
+/** The pads layout applies only in prose mode (the other modes aim for the classic pad). */
+function padLayoutActive() {
+  const isProse = !options.variant || options.variant === 'prose';
+  return padsOn && isProse;
+}
+
 /** A new flight. Per-flight counters and stats restart (call #, latency stats, log). */
 function reset() {
   callNumber = 0;
@@ -268,7 +279,7 @@ function reset() {
   firstAppliedWallTime = null;
   shownOutcome = null;
   byId('outcome').className = '';
-  ship = newState(chooseStart());
+  ship = newState({ ...chooseStart(), ...(padLayoutActive() ? { layout: 'pads' } : {}) });
   pilot = createPilotLoop(pilotSettings);
   activeDecision = { ...activeDecision, thrust: false, tilt: 'center', action: null };
   flightGeneration = flightGeneration + 1;
@@ -345,6 +356,13 @@ function setUpControls() {
   byId('rnd').onchange = (/** @type {any} */ event) => {
     randomStartOn = event.target.checked;
     localStorage.setItem('lander.random', randomStartOn ? '1' : '0');
+    event.target.blur();
+    reset();
+  };
+  byId('pads').checked = padsOn;
+  byId('pads').onchange = (/** @type {any} */ event) => {
+    padsOn = event.target.checked;
+    localStorage.setItem('lander.pads', padsOn ? '1' : '0');
     event.target.blur();
     reset();
   };
@@ -698,6 +716,22 @@ function probabilityList(probabilities) {
 }
 
 /** @param {any} decision */
+/**
+ * The landing-pad choice made with this decision, if one was (pads layout).
+ * @param {any} pad
+ */
+function padChoiceHTML(pad) {
+  if (!pad) {
+    return '';
+  }
+  return (
+    `<h3>landing pad choice (its own call, ${pad.ms} ms): <b>${esc(pad.target)}</b> · ` +
+    `${Math.round(pad.confidence * 100)}%</h3>` +
+    `<pre style="white-space:pre-wrap;color:#fc6">${esc(pad.state)}</pre>` +
+    `<div class="meta">${probabilityList(pad.probabilities)}</div>`
+  );
+}
+
 function proseHowHTML(decision) {
   const upstream = decision.upstream;
   const body = JSON.parse(upstream.body);
@@ -716,7 +750,8 @@ function proseHowHTML(decision) {
       `<h3>perception: prose state sent (written by code from the physics, standing in for a ` +
       `vision model)</h3><pre style="white-space:pre-wrap;color:#fc6">${esc(body.state)}</pre>` +
       `<h3>model: choice answers (questions from lander/modes/prose.json)</h3>` +
-      `<table class="ex">${answerRows.join('')}</table>`,
+      `<table class="ex">${answerRows.join('')}</table>` +
+      padChoiceHTML(decision.pad),
     details:
       `<details><summary>question instructions + criteria</summary>` +
       `${questionNotes.join('')}</details>` +
@@ -849,11 +884,24 @@ function fuelBar(fuel, color) {
   );
 }
 
+/** Pads layout: the chosen pad, its reward and the model's confidence. */
+function targetRowHTML() {
+  if (!ship.layout) {
+    return '';
+  }
+  if (!ship.target) {
+    return hudRow(['target pad', 'choosing…']);
+  }
+  const pad = targetPad(ship);
+  const confidence = Math.round((ship.targetP ?? 0) * 100);
+  return hudRow(['target pad', `${esc(pad.id)} ×${pad.reward} · ${confidence}%`]);
+}
+
 /** @param {Ship} state @param {string} color */
 function shipRows(state, color) {
   return (
     hudRow(
-      ['alt', (state.y - PAD.y).toFixed(1) + ' m'],
+      ['alt', (state.y - targetPad(state).y).toFixed(1) + ' m'],
       ['vy', signed(state.vy) + ' m/s'],
       ['vx', signed(state.vx) + ' m/s'],
     ) + hudRow(['tilt', degrees(state.angle)], ['fuel', fuelBar(state.fuel, color)])
@@ -875,7 +923,8 @@ function hudHTML(now, burning, callRate) {
   let html =
     `<div class="g">SHIP · t ${ship.t.toFixed(1)} s · ${options.timeScale}×` +
     `${paused ? ' · PAUSED' : ''}</div>` +
-    shipRows(ship, '#0f8');
+    shipRows(ship, '#0f8') +
+    targetRowHTML();
   html += `<div class="k" style="font-size:11px">start: ${esc(startInfo)}</div>`;
   html += `<div class="g">PILOT · ${pilotLabel()}</div>`;
 
@@ -1012,17 +1061,43 @@ function drawTerrainAndPad(toX, toY) {
   context.strokeStyle = '#888';
   context.beginPath();
   for (let x = 0; x <= W; x++) {
-    context.lineTo(toX(x), toY(terrainY(x)));
+    context.lineTo(toX(x), toY(terrainY(x, padsFor(ship))));
   }
   context.stroke();
 
-  context.strokeStyle = '#ff0';
-  context.lineWidth = 4;
+  for (const pad of padsFor(ship)) {
+    drawPad(pad, toX, toY);
+  }
+}
+
+/**
+ * One pad, with its sign in the pads layout. The target pad is bright; the others are dim.
+ * @param {import('./sim.mjs').Pad} pad
+ * @param {(x: number) => number} toX @param {(y: number) => number} toY
+ */
+function drawPad(pad, toX, toY) {
+  const isTarget = !ship.layout || pad.id === ship.target;
+  context.strokeStyle = isTarget ? '#ff0' : '#886';
+  context.lineWidth = isTarget ? 4 : 3;
   context.beginPath();
-  context.moveTo(toX(PAD.x0), toY(PAD.y));
-  context.lineTo(toX(PAD.x1), toY(PAD.y));
+  context.moveTo(toX(pad.x0), toY(pad.y));
+  context.lineTo(toX(pad.x1), toY(pad.y));
   context.stroke();
   context.lineWidth = 1;
+  if (!ship.layout || !pad.sign) {
+    return;
+  }
+  const centerX = toX((pad.x0 + pad.x1) / 2);
+  const signY = toY(pad.y) - 10;
+  let label = pad.sign;
+  if (pad.id === ship.target) {
+    label = `▼ ${pad.sign} · ${Math.round((ship.targetP ?? 0) * 100)}%`;
+  }
+  context.font = '11px monospace';
+  context.textAlign = 'center';
+  context.fillStyle = isTarget ? '#ff0' : '#aa9';
+  context.fillText(label, centerX, signY);
+  context.textAlign = 'start';
 }
 
 /**

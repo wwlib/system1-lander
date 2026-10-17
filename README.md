@@ -120,8 +120,8 @@ The Mac had only tev1:4b and a small embedding model loaded for most runs; gemma
 | B: thrust criteria rewritten to match the probe | 9/9, 9/9, 17/20 | 33, 30, 34 | 1/6 | 1.40 |
 | C: velocity wording only | 9/9, 9/9 (thrust as before) | 33, 30 (thrust as before) | 5/6, 5/6 | 5.70, 5.85 |
 | D: C + "more thrust if the pad is far and the ship is low" in the instructions | – | – | 1/6 | 1.23 |
-| **F: C + pad-aware `medium` criterion** (current) | 9/9, 9/9, 13/20 | 33, 30, 21 | 5/6 | 5.60 |
-| **F + flat approach zones** (current default) | | | **6/6** | **6.85** |
+| **F: C + pad-aware `medium` criterion** | 9/9, 9/9, 13/20 | 33, 30, 21 | 5/6 | 5.60 |
+| **F + flat approach zones** | | | **6/6** | **6.85** |
 
 - **Direction was healthy all along.** Both sides got it right, in isolation and in full scenes. The only misses were `none` when about to touch down, where code levels the ship anyway. Rewording the direction criteria with "because the pad is to the right" broke it (4/9, with mirrored flips), so that wording was reverted.
 - **Velocity:** "very near, just a little to one side" in the `very_slow` criterion fixed "very near → slow (2 m/s)", one cause of touching down sideways at more than 2 m/s.
@@ -129,6 +129,49 @@ The Mac had only tev1:4b and a small embedding model loaded for most runs; gemma
 - **Flat approach zones** (`APPROACH` in `sim.mjs`): the model cannot see terrain. The ground is now pad height within 20 m of every pad edge (`PADS`), and the bumps grow back smoothly over the next 25 m. This applies to every start, random or fixed.
 
 Logs: `results/batch21-*.log`.
+
+### Horizontal prose, terrain clearance and touchdown leveling (current default)
+
+Mac, tev1:4b, random seeds 1–6, 4/s.
+
+- **Where the pad is.** The side is stated twice, as an impression rather than an instruction: "The pad is far off to your right. You are left of the pad." The bands are *directly above / close / a fair way / far / way in the distance*.
+- **Drift relative to the pad** (`approach`): "You are drifting toward the pad, fast." / "…away from the pad, slowly." The old left/right drift sentence made direction worse, because fast drift flipped answers.
+- **Terrain clearance** (`terrain`): code checks the highest ground between the ship and the target pad. The prose says "There is a ridge ahead, higher than you." / "…just below your height." / "The ground between you and the pad is clear." `medium` thrust also covers "a ridge ahead is higher than the lander".
+- **Direction criteria name the side of the pad:** "fly to the right, toward the pad that is off to your right"; `none` is "…because you are directly above the pad".
+- **Touchdown leveling** (pilot loop, part of the impulse limits): within 4 m of the ground below, the tilt goes to center without waiting for a reply. Two earlier crashes were tilt ≥ 0.3 at touchdown, because a new-scene reply takes about 1.2 s.
+
+`tools/dirprobe.mjs` is a mirrored direction probe: 160 flight scenes (5 distances × 5 drifts × 4 altitudes × both sides), with all questions in one call, as in flight.
+
+| prose | pad right | pad left | directly above | mirrored pairs |
+|---|---|---|---|---|
+| before (committed b806f8f) | 75/80 | 70/80 | 40/40 | 95/100 |
+| before + old drift sentence | 74/80 | 66/80 | 40/40 | 92/100 |
+| new prose, old direction criteria | 78/80 | 76/80 | 40/40 | 92/100 |
+| **new prose + new criteria (current)** | **80/80** | **80/80** | 40/40 | **100/100** |
+
+Most "before" misses were `none` near touchdown when the pad was a fair way or more off to one side, more often on the left.
+
+Flights with the current prose: **classic 6/6, avg score 6.60**, 60% fuel left. That is the same landing count as before (6/6, 6.85), and these six seeds can't separate the scores. More sentences mean more distinct scenes, so more calls miss the prompt cache: avg latency 414 ms, actual rate 1.7/s.
+
+### Choose landing pad (`?pads=1`, the **Choose pad** checkbox; headless `LAYOUT=pads`; prose mode only)
+
+There are three pads, each with a sign: **NARROW ×2** (x 22–32), **WIDE ×1** (x 80–110) and **RIDGE ×3** (x 172–182, on a plateau 30 m up). Every pad, including the ridge, has a flat 20 m shoulder on both sides.
+
+The model picks the target with its own `pad_choice` call (in `prose.json`). That call gets one sentence per pad, giving distance, side, height relative to the ship and whether a ridge is in the way, plus fuel and the current target. The criteria weigh reward against distance, fuel and difficulty. The pick is re-asked every 5 sim s, until the ship is near the target and low. Flight prose then describes the target pad, and the score is multiplied by the reward of the pad landed on. The HUD shows the target pad and its confidence, and the target pad is drawn bright with "▼".
+
+| prose | landed | avg score (×reward) | pads landed on |
+|---|---|---|---|
+| first prose | 4/6 | 11.98 | wide, ridge ×3 |
+| + touchdown leveling | 5/6 | 13.78 | narrow, wide, ridge ×3 |
+| current prose | 5/6 | 11.13 | narrow, wide ×2, ridge ×2 |
+
+- **The picks were sensible.** Ships starting near a pad chose it: x 42 → narrow, x 83 → wide, x 175 and 183 → ridge. With low fuel the model moves toward the nearest pad.
+- **Picks were stable.** No flight switched pads; later re-asks confirmed the target at 0.9+.
+- **One questionable pick in a probe:** directly above the ridge pad with 20% fuel, it chose the far wide pad (0.51 vs 0.41).
+- **Crashes were touchdowns just off a pad edge.** Narrow pads are 10 m wide; one ship came down 2 m short of the wide pad.
+- **Not the default.** The layout lands 5/6 against 6/6 for the classic pad, so it stays opt-in.
+
+Logs: `results/batch22-*.log`.
 
 ## Playground
 
