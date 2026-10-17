@@ -1,5 +1,5 @@
 {
-  "about": "Prose input + choice questions (first designed in the playground, then tuned with tools/proseprobe.mjs, tools/dirprobe.mjs and headless flights). One /v1/systemone call per decision with all questions; state = perception prose: where the pad is (side stated twice), drift toward/away from it, altitude/descent, terrain clearance toward the pad. pad_choice is asked in its own call in the pads layout.",
+  "about": "Prose input + choice questions (first designed in the playground, then tuned with tools/proseprobe.mjs, tools/dirprobe.mjs and headless flights). One /v1/systemone call per decision with all questions; state = perception prose, one line per element: where the pad is (side stated twice), drift toward/away from it, altitude/descent, terrain clearance toward the pad. pad_choice is asked in its own call in the pads layout.",
   "perception": ["pad", "approach", "altitude", "terrain"],
   "questions": {
     "flight_direction": { "type": "choice", "instructions": "Determine whether to fly to the right or to the left to get over the pad",

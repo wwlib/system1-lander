@@ -60,7 +60,7 @@ export const BANDS = {
   ],
   alt: [
     [4, 'about to touch down'],
-    [25, 'low'],
+    [33, 'low'], // raised from 25 m so the model starts slowing a little earlier
     [60, 'medium'],
     [1e9, 'high'],
   ],
@@ -214,8 +214,9 @@ export function terrainSentence(ship, pad) {
 }
 
 /**
- * The perception prose sent as the model's state, e.g.
- * "The pad is far to the right. The lander is at high altitude and is descending fast."
+ * The perception prose sent as the model's state, one sentence group per line, e.g.
+ * "The pad is far off to your right. You are left of the pad.\n
+ *  The lander is at high altitude and is descending fast."
  * Distances and altitude are measured to the target pad.
  * @param {Ship} ship
  * @param {ProseQuestionSet} questionSet
@@ -240,7 +241,7 @@ export function perceive(ship, questionSet) {
       sentences.push(driftSentence(ship.vx));
     }
   }
-  return sentences.join(' ');
+  return sentences.join('\n');
 }
 
 // ---- Landing-pad choice (pads layout) ----
@@ -311,7 +312,7 @@ export function padSummary(ship, pad) {
 }
 
 /**
- * The state for the pad choice: every pad, the fuel, and the current target.
+ * The state for the pad choice: every pad, the fuel, and the current target, one per line.
  * @param {Ship} ship
  * @returns {string}
  */
@@ -322,7 +323,7 @@ export function padChoiceState(ship) {
   if (current) {
     sentences.push(`You are heading for ${current.name}.`);
   }
-  return sentences.join(' ');
+  return sentences.join('\n');
 }
 
 /**

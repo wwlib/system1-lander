@@ -140,3 +140,36 @@ The model picks the target with its own `pad_choice` call (in `prose.json`). Tha
 - **Not the default.** The layout lands 5/6 against 6/6 for the classic pad, so it stays opt-in.
 
 Logs: `results/batch22-*.log`.
+
+## One line per sentence, and "low" starts higher
+
+Mac, tev1:4b, random seeds 1–6, 4/s, all runs on the same evening.
+
+- **State format.** The prose state now has one sentence group per line (`join('\n')`), for flight prose and the pad choice:
+
+  ```
+  The pad is far off to your left. You are right of the pad.
+  You are drifting away from the pad, fast.
+  The lander is near the ground (low altitude) and is descending slowly.
+  There is a ridge ahead, just below your height.
+  ```
+
+  The game's System 1 panel and the playground already show the state with `white-space: pre-wrap`.
+- **"Low" starts at 33 m** above the pad, not 25 m (`BANDS.alt`), so "near the ground (low altitude)" comes sooner and the thrust criteria ("…has low altitude…") apply earlier. The criteria wording did not need to change. `padChoiceDue` still treats 25 m as committed.
+
+| run (classic) | landed | avg score | avg latency |
+|---|---|---|---|
+| baseline, same evening | 6/6 | 7.38 | 324 ms |
+| newlines only (low 25 m) | 5/6 | 6.00 | 408 ms |
+| low 33 m only (spaces) | 5/6 | 6.15 | 324 ms |
+| both, run 1 (slow host, one flight averaged 2.6 s per call) | 3/6 | 3.40 | 655 ms |
+| **both, run 2** | **6/6** | **6.93** | 339 ms |
+
+| run (pads) | landed | avg score | pads landed on |
+|---|---|---|---|
+| baseline, same evening | 6/6 | 12.87 | narrow, wide ×3, ridge ×2 |
+| **both** | **6/6** | **12.03** | narrow, wide ×3, ridge ×2 |
+
+The single-change crashes were all seed 1: horizontal speed at touchdown (vx 2.3–3.4 m/s). On these six seeds the new format is about neutral. It lands as well as the baseline, but scores run slightly lower and vertical touchdown speed did not improve. Run-to-run spread is as large as the difference.
+
+Logs: `results/batch23-*.log`.
