@@ -16,6 +16,24 @@
  * @property {number} [score]    landing score 0..10 (0 for a crash)
  * @property {Record<string, number | string>} [scoreBreakdown]  points per part; { crash: reasons } for a crash
  * @property {number} [outcomeT]  the game records when the outcome happened
+ * @property {string} [layout]   pad layout: 'classic' (one pad, the default) or 'pads' (choose a pad)
+ * @property {string} [target]   id of the pad the pilot is aiming for (pads layout)
+ * @property {number} [targetT]  sim time of the last pad choice
+ * @property {number} [targetP]  the model's probability for the chosen pad
+ * @property {string} [landedPad]  id of the pad the ship landed on
+ */
+
+/**
+ * A landing pad. `reward` multiplies the landing score.
+ * @typedef {object} Pad
+ * @property {string} id      short name, also the pad_choice criteria key
+ * @property {number} x0      left edge, m
+ * @property {number} x1      right edge, m
+ * @property {number} y       surface height, m
+ * @property {number} reward  score multiplier
+ * @property {string} name    how prose names it, e.g. 'the wide pad'
+ * @property {string} trait   how prose describes it, e.g. 'wide and easy'
+ * @property {string} sign    the small sign drawn above it, e.g. 'WIDE ×1'
  */
 
 /** @typedef {'left' | 'center' | 'right'} Tilt */
@@ -38,50 +56,136 @@ export const PAD = { x0: 120, x1: 150, y: 10 };
 /** Horizontal middle of the pad, m. */
 export const PAD_CENTER_X = (PAD.x0 + PAD.x1) / 2;
 
+/** Height of the world floor where there are no bumps, m (the classic pad sits on it). */
+export const FLOOR_Y = 10;
+
 /**
- * Every landing pad. The terrain is flattened around each one (see APPROACH).
- * @type {{ x0: number, x1: number, y: number }[]}
+ * The pad layouts. 'classic' is the original single pad; 'pads' offers three pads to choose from.
+ * @type {Record<string, Pad[]>}
  */
-export const PADS = [PAD];
+export const LAYOUTS = {
+  classic: [
+    { id: 'pad', ...PAD, reward: 1, name: 'the pad', trait: 'wide', sign: '' },
+  ],
+  pads: [
+    { id: 'narrow', x0: 22, x1: 32, y: 10, reward: 2, name: 'the narrow pad', trait: 'narrow, needs care', sign: 'NARROW ×2' },
+    { id: 'wide', x0: 80, x1: 110, y: 10, reward: 1, name: 'the wide pad', trait: 'wide and easy', sign: 'WIDE ×1' },
+    { id: 'ridge', x0: 172, x1: 182, y: 40, reward: 3, name: 'the ridge pad', trait: 'narrow, high on a ridge', sign: 'RIDGE ×3' },
+  ],
+};
+
+/** The classic pads (kept for code that predates layouts). */
+export const PADS = LAYOUTS.classic;
+
+/**
+ * The pads for a ship's layout.
+ * @param {{ layout?: string }} [ship]
+ * @returns {Pad[]}
+ */
+export function padsFor(ship) {
+  return LAYOUTS[ship?.layout || 'classic'] || LAYOUTS.classic;
+}
+
+/** @param {Pad} pad */
+export function padCenter(pad) {
+  return (pad.x0 + pad.x1) / 2;
+}
+
+/**
+ * The pad the ship is aiming for: its chosen target, else the nearest pad.
+ * @param {Ship} ship
+ * @returns {Pad}
+ */
+export function targetPad(ship) {
+  const pads = padsFor(ship);
+  const chosen = pads.find((pad) => pad.id === ship.target);
+  if (chosen) {
+    return chosen;
+  }
+  let nearest = pads[0];
+  for (const pad of pads) {
+    if (Math.abs(padCenter(pad) - ship.x) < Math.abs(padCenter(nearest) - ship.x)) {
+      nearest = pad;
+    }
+  }
+  return nearest;
+}
 
 /**
  * Approach zones beside every pad. The model cannot see terrain, so no bump may stand near a pad.
  * Within `flat` m of a pad edge the ground is pad height; over the next `ramp` m the bumps grow back
- * smoothly to full size.
+ * smoothly to full size (and a raised pad's shoulder slopes down to the floor).
  */
 export const APPROACH = { flat: 20, ramp: 25 };
 
 /**
+ * Horizontal distance from x to the nearest edge of a pad (0 on the pad).
+ * @param {Pad} pad @param {number} x
+ */
+function distanceFromPad(pad, x) {
+  return Math.max(0, pad.x0 - x, x - pad.x1);
+}
+
+/**
+ * 0 inside the flat zone, rising smoothly to 1 at the end of the ramp.
+ * @param {number} distance  from the pad edge, m
+ */
+function rampAt(distance) {
+  const intoRamp = (distance - APPROACH.flat) / APPROACH.ramp;
+  const ramp = Math.min(1, Math.max(0, intoRamp));
+  return ramp * ramp * (3 - 2 * ramp);
+}
+
+/**
  * How much of the full bump height is allowed at x: 0 next to a pad, 1 far from every pad.
  * @param {number} x
+ * @param {Pad[]} [pads]
  * @returns {number}
  */
-export function bumpScale(x) {
+export function bumpScale(x, pads = PADS) {
   let scale = 1;
-  for (const pad of PADS) {
-    const distanceFromPad = Math.max(0, pad.x0 - x, x - pad.x1);
-    const intoRamp = (distanceFromPad - APPROACH.flat) / APPROACH.ramp;
-    const ramp = Math.min(1, Math.max(0, intoRamp));
-    const smoothRamp = ramp * ramp * (3 - 2 * ramp);
-    scale = Math.min(scale, smoothRamp);
+  for (const pad of pads) {
+    scale = Math.min(scale, rampAt(distanceFromPad(pad, x)));
   }
   return scale;
 }
 
 /**
  * Ground height at a horizontal position. Flat on and beside each pad, bumpy farther away.
+ * A raised pad stands on a flat shoulder that slopes down to the floor.
  * @param {number} x
+ * @param {Pad[]} [pads]  the layout's pads (default: the classic pad)
  * @returns {number}
  */
-export function terrainY(x) {
-  for (const pad of PADS) {
+export function terrainY(x, pads = PADS) {
+  for (const pad of pads) {
     if (x >= pad.x0 && x <= pad.x1) {
+      return pad.y;
+    }
+  }
+  for (const pad of pads) {
+    const isFloorPad = pad.y <= FLOOR_Y;
+    if (isFloorPad && distanceFromPad(pad, x) <= APPROACH.flat) {
       return pad.y;
     }
   }
   const bigBumps = 8 * Math.abs(Math.sin(x * 0.07));
   const smallBumps = 4 * Math.abs(Math.sin(x * 0.23));
-  return PAD.y + bumpScale(x) * (bigBumps + smallBumps);
+  let height = FLOOR_Y + bumpScale(x, pads) * (bigBumps + smallBumps);
+  for (const pad of pads) {
+    const shoulder = FLOOR_Y + (pad.y - FLOOR_Y) * (1 - rampAt(distanceFromPad(pad, x)));
+    height = Math.max(height, shoulder);
+  }
+  return height;
+}
+
+/**
+ * The pad under x, if any.
+ * @param {number} x @param {Pad[]} pads
+ * @returns {Pad | undefined}
+ */
+export function padUnder(x, pads) {
+  return pads.find((pad) => x >= pad.x0 && x <= pad.x1);
 }
 
 /** Touchdown limits for the shock-absorbing legs: stay under all three to survive. */
@@ -103,24 +207,34 @@ function roundToTenth(value) {
  *   vertical:   1.0 per m/s above 1 m/s (max 3)
  *   horizontal: 1.0 per m/s (max 2)
  *   tilt:       2.0 × |angle| / 0.3 (max 2)
- *   off-center: 2.0 × |x − pad center| / 15 (max 2)
+ *   off-center: 2.0 × |x − pad center| / half the pad width (max 2)
+ * The total (0..10) is then multiplied by the pad's reward.
  * @param {Ship} ship
+ * @param {Pad} [pad]  the pad landed on (default: the pad under the ship)
  * @returns {{ score: number, scoreBreakdown: Record<string, number> }}
  */
-export function landingScore(ship) {
+export function landingScore(ship, pad) {
+  const landedOn = pad || padUnder(ship.x, padsFor(ship)) || targetPad(ship);
+  const halfWidth = (landedOn.x1 - landedOn.x0) / 2;
+  const offCenter = Math.abs(ship.x - padCenter(landedOn));
   const breakdown = {
     base: 9,
     fuel_bonus: roundToTenth(ship.fuel / 100),
     vertical: -roundToTenth(clampBetweenZeroAnd(Math.abs(ship.vy) - 1, 3)),
     horizontal: -roundToTenth(clampBetweenZeroAnd(Math.abs(ship.vx), 2)),
     tilt: -roundToTenth(clampBetweenZeroAnd((2 * Math.abs(ship.angle)) / 0.3, 2)),
-    off_center: -roundToTenth(clampBetweenZeroAnd((2 * Math.abs(ship.x - PAD_CENTER_X)) / 15, 2)),
+    off_center: -roundToTenth(clampBetweenZeroAnd((2 * offCenter) / halfWidth, 2)),
   };
   let total = 0;
   for (const points of Object.values(breakdown)) {
     total = total + points;
   }
-  return { score: roundToTenth(clampBetweenZeroAnd(total, 10)), scoreBreakdown: breakdown };
+  const baseScore = roundToTenth(clampBetweenZeroAnd(total, 10));
+  if (landedOn.reward === 1) {
+    return { score: baseScore, scoreBreakdown: breakdown };
+  }
+  const withReward = { ...breakdown, reward: landedOn.reward };
+  return { score: roundToTenth(baseScore * landedOn.reward), scoreBreakdown: withReward };
 }
 
 /**
@@ -140,7 +254,7 @@ export function newState(overrides = {}) {
  */
 function crashReasons(ship) {
   const reasons = [];
-  const onPad = ship.x >= PAD.x0 && ship.x <= PAD.x1;
+  const onPad = !!padUnder(ship.x, padsFor(ship));
   if (!onPad) {
     reasons.push('off pad');
   }
@@ -205,11 +319,15 @@ export function step(ship, timeStep, thrust, tilt, tiltRate = 2.0) {
 
   if (ship.x < 0 || ship.x > W) {
     ship.outcome = 'crash (out of bounds)';
-  } else if (ship.y <= terrainY(ship.x)) {
-    ship.y = terrainY(ship.x);
+  } else if (ship.y <= terrainY(ship.x, padsFor(ship))) {
+    ship.y = terrainY(ship.x, padsFor(ship));
     const reasons = crashReasons(ship);
     if (reasons.length === 0) {
       ship.outcome = 'LANDED';
+      const landedOn = padUnder(ship.x, padsFor(ship));
+      if (ship.layout && landedOn) {
+        ship.landedPad = landedOn.id;
+      }
       Object.assign(ship, landingScore(ship));
     } else {
       ship.outcome = `crash (${reasons.join(', ')})`;
@@ -230,8 +348,9 @@ export function step(ship, timeStep, thrust, tilt, tiltRate = 2.0) {
  * @returns {{ descent: 'too_fast' | 'ok', steer: 'left' | 'right' | 'none', pad: 'below' | 'left' | 'right', alt: number }}
  */
 export function features(ship) {
-  const distanceToPad = PAD_CENTER_X - ship.x; // + = pad is to the right
-  const altitude = ship.y - PAD.y;
+  const aimPad = targetPad(ship);
+  const distanceToPad = padCenter(aimPad) - ship.x; // + = pad is to the right
+  const altitude = ship.y - aimPad.y;
 
   // While still far from the pad and low, nearly hold height; otherwise allow faster descent higher up.
   const farFromPad = Math.abs(distanceToPad) > 12;

@@ -1,0 +1,52 @@
+{
+ "about": "Prose input + choice questions (first designed in the playground, then tuned with tools/proseprobe.mjs and headless flights). One /v1/systemone call per decision with all questions; state = perception prose (pad sentence + altitude/descent sentence + terrain clearance toward the pad). pad_choice is asked in its own call in the pads layout.",
+ "perception": [
+  "pad",
+  "approach",
+  "altitude",
+  "terrain"
+ ],
+ "questions": {
+  "flight_direction": {
+   "type": "choice",
+   "instructions": "Determine whether to fly to the right or to the left",
+   "criteria": {
+    "right": "fly to the right",
+    "left": "fly to the left",
+    "none": "no need to fly left or right"
+   }
+  },
+  "flight_velocity": {
+   "type": "choice",
+   "instructions": "Determine how fast to fly sideways based on how far off the pad is",
+   "criteria": {
+    "fast": "fly fast if the pad is far off or way in the distance",
+    "slow": "fly slowly if the pad is a fair way off",
+    "very_slow": "fly very slowly if the pad is close, just off to one side",
+    "none": "no sideways speed needed if you are directly above the pad"
+   }
+  },
+  "downward_thrust_magnitude": {
+   "type": "choice",
+   "instructions": "You are piloting a lunar lander. Determine the magnitude of the thrust needed to slow the descent of the lander based on its altitude.",
+   "criteria": {
+    "large": "a lot of thrust is needed because the lander has low altitude and is descending very fast",
+    "medium": "some thrust is needed because the lander has low altitude and is descending slowly, or the pad is still far away and the lander is getting low, or a ridge ahead is higher than the lander",
+    "small": "very little thrust is needed because the lander is descending slowly or has high altitude",
+    "none": "no thrust is needed because the lander is not descending"
+   }
+  }
+ },
+ "pad_choice": {
+  "review_seconds": 5,
+  "question": {
+   "type": "choice",
+   "instructions": "You are piloting a lunar lander and must choose which landing pad to aim for. Weigh the reward points against the risk: how far the pad is, how much fuel is left, and how hard the pad is to land on. A pad that is higher than you or behind a ridge costs a lot of fuel to reach. When fuel is low, choose the nearest pad you can reach. Keep heading for the current pad unless another pad is clearly better.",
+   "criteria": {
+    "narrow": "the narrow pad: \u00d72 points, a good choice when it is near and there is enough fuel",
+    "wide": "the wide pad: \u00d71 points, the safe choice when the other pads are far or hard to reach",
+    "ridge": "the ridge pad: \u00d73 points, worth it only with plenty of fuel when it is near and not higher than you"
+   }
+  }
+ }
+}

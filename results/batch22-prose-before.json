@@ -1,0 +1,12 @@
+{
+  "about": "Prose input + choice questions (first designed in the playground, then tuned with tools/proseprobe.mjs and headless flights). One /v1/systemone call per decision with all questions; state = perception prose (pad sentence + altitude/descent sentence).",
+  "perception": ["pad", "altitude"],
+  "questions": {
+    "flight_direction": { "type": "choice", "instructions": "Determine whether to fly to the right or to the left",
+      "criteria": { "right": "fly to the right", "left": "fly to the left", "none": "no need to fly left or right" } },
+    "flight_velocity": { "type": "choice", "instructions": "Determine how fast to fly sideways based on how far the pad is",
+      "criteria": { "fast": "fly fast if the pad is far or way in the distance", "slow": "fly slowly if the pad is near", "very_slow": "fly very slowly if the pad is very near, just a little to one side", "none": "no velocity needed if the pad is directly below" } },
+    "downward_thrust_magnitude": { "type": "choice", "instructions": "You are piloting a lunar lander. Determine the magnitude of the thrust needed to slow the descent of the lander based on its altitude.",
+      "criteria": { "large": "a lot of thrust is needed because the lander has low altitude and is descending very fast", "medium": "some thrust is needed because the lander has low altitude and is descending slowly, or the pad is still far away and the lander is getting low", "small": "very little thrust is needed because the lander is descending slowly or has high altitude", "none": "no thrust is needed because the lander is not descending" } }
+  }
+}

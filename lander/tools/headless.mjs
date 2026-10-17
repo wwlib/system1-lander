@@ -6,6 +6,7 @@
 //
 // Environment:
 //   VARIANT=prose|data|policy:<name>  (default prose)   MODEL=tev1:4b   MAX_T=120 (sim seconds)
+//   LAYOUT=pads     three pads to choose from (prose mode); default classic (one pad)
 //   EXTRA=2         add seeded extra starts to the 4 fixed ones (2 → 6 starts)
 //   RANDOM_START=1 SEED=N COUNT=6
 //                   instead fly COUNT random starts with seeds N, N+1, … (sim.mjs randomStart;
@@ -35,6 +36,8 @@ const MAX_T = Number(process.env.MAX_T || 120);
 const DELAY_MS = Number(process.env.DELAY_MS || 0);
 /** A ship that climbs this high above the pad (m), or leaves the world, has flown away. */
 const FLY_AWAY_HEIGHT = 250;
+
+const LAYOUT = process.env.LAYOUT || 'classic';
 
 const options = {
   variant: process.env.VARIANT || DEFAULTS.variant,
@@ -115,6 +118,7 @@ const totals = {
   discarded: 0,
   skipped: 0,
   scenes: /** @type {number[]} */ ([]),
+  pads: /** @type {string[]} */ ([]),
 };
 
 /**
@@ -123,7 +127,9 @@ const totals = {
  */
 async function flyOne(start) {
   const { seed: _seed, ...startOverrides } = start;
-  const ship = newState(startOverrides);
+  const ship = newState({ ...startOverrides, ...(LAYOUT !== 'classic' ? { layout: LAYOUT } : {}) });
+  /** Each pad choice: "t=0.0 ridge 0.85". */
+  const padPicks = [];
   const loop = createPilotLoop(pilotSettings);
   /** @type {number[]} */
   const latencies = [];
@@ -175,6 +181,9 @@ async function flyOne(start) {
     if (!ship.outcome) {
       loop.receive(call, decision, ship);
     }
+    if (decision.pad) {
+      padPicks.push(`t=${decision.pad.t.toFixed(1)} ${decision.pad.target} ${decision.pad.confidence.toFixed(2)}`);
+    }
   }
 
   const altitudeReached = maxHeight - 10;
@@ -198,17 +207,23 @@ async function flyOne(start) {
 
   const score = (ship.score ?? 0).toFixed(1);
   const breakdown = ship.outcome === 'LANDED' ? ' ' + JSON.stringify(ship.scoreBreakdown) : '';
+  const padReport = padPicks.length
+    ? ` pad=${ship.landedPad ?? '-'} picks=[${padPicks.join(', ')}]`
+    : '';
+  if (ship.landedPad) {
+    totals.pads.push(ship.landedPad);
+  }
   console.log(
     JSON.stringify(start),
     '->',
     ship.outcome,
     `score=${score}${breakdown}`,
-    `t=${ship.t.toFixed(1)}s fuel=${ship.fuel.toFixed(0)} decisions=${latencies.length} ` +
+    `x=${ship.x.toFixed(1)} t=${ship.t.toFixed(1)}s fuel=${ship.fuel.toFixed(0)} decisions=${latencies.length} ` +
       `avg=${average(latencies).toFixed(0)}ms maxfall=${maxFall.toFixed(1)} ` +
       `avgthr=${(throttleSum / Math.max(1, latencies.length)).toFixed(2)} ` +
       `rate=${loop.actualRate(ship).toFixed(1)}/s discarded=${loop.stats.discarded} ` +
       `scenes=${scenes.size} skipped=${sameSceneSkips} ` +
-      `maxalt=${altitudeReached.toFixed(0)}m${flewAway ? ' FLEW-AWAY' : ''}`,
+      `maxalt=${altitudeReached.toFixed(0)}m${flewAway ? ' FLEW-AWAY' : ''}${padReport}`,
   );
 }
 
@@ -230,5 +245,6 @@ console.log(
     `latencyComp ${pilotSettings.latencyComp ? 'on' : 'off'}, ` +
     `impulse ${pilotSettings.impulseLimits ? 'on' : 'off'}, delay ${DELAY_MS} ms, ` +
     `discarded ${totals.discarded}, flew away ${totals.flewAway}, ` +
-    `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}`,
+    `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}` +
+    (LAYOUT !== 'classic' ? `, layout ${LAYOUT}, landed on [${totals.pads.join(', ')}]` : ''),
 );

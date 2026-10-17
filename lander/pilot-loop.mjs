@@ -9,11 +9,13 @@
 //     replies older than `maxAge` sim seconds.
 //   - Impulse limits: a throttle target is a lease that expires (then the engine eases to a safe
 //     hover, or to idle while rising), and a climb guard keeps a held burn from flying the ship
-//     away. Steering targets are held when replies are late; full thrust is not.
+//     away. Steering targets are held when replies are late; full thrust is not. Within
+//     `levelHeight` m of the ground below, the tilt goes to center for touchdown without waiting
+//     for a reply.
 //
 // The request body is untouched: the loop only chooses WHEN to call and WHICH ship state to send.
 
-import { step, G, THRUST } from './sim.mjs';
+import { step, G, THRUST, terrainY, padsFor } from './sim.mjs';
 
 /** @typedef {import('./sim.mjs').Ship} Ship */
 /** @typedef {import('./sim.mjs').Tilt} Tilt */
@@ -26,7 +28,8 @@ import { step, G, THRUST } from './sim.mjs';
  * @property {number} tiltRate        tilt slew limit, rad/s (smoothing on; physics default is 2)
  * @property {boolean} latencyComp    send a predicted state and discard replies older than maxAge
  * @property {number} maxAge          sim s; older replies are discarded while a recent target exists
- * @property {boolean} impulseLimits  throttle lease + climb guard
+ * @property {boolean} impulseLimits  throttle lease + climb guard + touchdown leveling
+ * @property {number} levelHeight     m above the ground below; under it the tilt goes to center
  * @property {number} leaseMin        a throttle target lasts max(1/rate, leaseMin) sim seconds
  * @property {number} climbLimit      m/s; above this upward speed the guard caps throttle below hover
  */
@@ -45,6 +48,7 @@ export const DEFAULT_SETTINGS = {
   impulseLimits: true,
   leaseMin: 0.4,
   climbLimit: 1.0,
+  levelHeight: 4,
 };
 
 /** The rate choices offered in the UI. ('max' is accepted only by headless tests, DECISION_RATE=max.) */
@@ -153,6 +157,7 @@ export function createPilotLoop(overrides = {}) {
     /** The throttle lease has run out (for the HUD). */
     leaseExpired: false,
     climbGuardActive: false,
+    levelling: false,
   };
 
   /** @type {PendingCall | null} */
@@ -195,7 +200,8 @@ export function createPilotLoop(overrides = {}) {
 
   /**
    * A reply arrived. Returns 'applied' or 'discarded' (too old).
-   * @param {PendingCall} call @param {{ thrust: number | boolean, tilt: Tilt }} decision
+   * @param {PendingCall} call
+   * @param {{ thrust: number | boolean, tilt: Tilt, pad?: { target: string, t: number, confidence: number } | null }} decision
    * @param {Ship} ship
    * @returns {'applied' | 'discarded' | 'ignored'}
    */
@@ -204,6 +210,12 @@ export function createPilotLoop(overrides = {}) {
       return 'ignored';
     }
     pending = null;
+    // A new landing-pad choice applies even if the controls in this reply are too old.
+    if (decision.pad) {
+      ship.target = decision.pad.target;
+      ship.targetT = decision.pad.t;
+      ship.targetP = decision.pad.confidence;
+    }
     const age = ship.t - call.sentT;
     stats.lastAge = age;
     // Smooth the age so one slow reply does not swing the prediction horizon.
@@ -258,6 +270,17 @@ export function createPilotLoop(overrides = {}) {
   }
 
   /**
+   * The tilt to fly with: the target, or center when the ground is close below (impulse limits on).
+   * @param {Ship} ship
+   * @returns {Tilt}
+   */
+  function touchdownTilt(ship) {
+    const heightAboveGround = ship.y - terrainY(ship.x, padsFor(ship));
+    stats.levelling = settings.impulseLimits && heightAboveGround < settings.levelHeight;
+    return stats.levelling ? 'center' : targets.tilt;
+  }
+
+  /**
    * Advance the ship by one physics step with the current controls.
    * @param {Ship} ship @param {number} timeStep
    */
@@ -272,7 +295,8 @@ export function createPilotLoop(overrides = {}) {
     } else {
       controls.throttle = target;
     }
-    step(ship, timeStep, controls.throttle > 0 ? controls.throttle : false, targets.tilt, currentTiltRate());
+    const tilt = touchdownTilt(ship);
+    step(ship, timeStep, controls.throttle > 0 ? controls.throttle : false, tilt, currentTiltRate());
     return ship;
   }
 

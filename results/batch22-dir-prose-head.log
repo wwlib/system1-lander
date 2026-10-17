@@ -1,0 +1,201 @@
+✓ pad above d=  2 drift=-3 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 3 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift=-1 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 1 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 0 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 0 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 1 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift=-1 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift= 3 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift=-3 alt=100 dir=none 0.94 vel=none thrust=small | The pad is directly below. The lander is at high altitude and is descending slowly.
+✓ pad right d=  8 drift=-3 alt=100 dir=right 0.96 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=  8 drift= 3 alt=100 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=  8 drift=-1 alt=100 dir=right 0.96 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=  8 drift= 1 alt=100 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=  8 drift= 0 alt=100 dir=right 0.96 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=  8 drift= 0 alt=100 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=  8 drift= 1 alt=100 dir=right 0.96 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=  8 drift=-1 alt=100 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=  8 drift= 3 alt=100 dir=right 0.96 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=  8 drift=-3 alt=100 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 25 drift=-3 alt=100 dir=right 0.77 vel=very_slow thrust=small | The pad is near, to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 25 drift= 3 alt=100 dir=left 0.87 vel=very_slow thrust=small | The pad is near, to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 25 drift=-1 alt=100 dir=right 0.77 vel=very_slow thrust=small | The pad is near, to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 25 drift= 1 alt=100 dir=left 0.87 vel=very_slow thrust=small | The pad is near, to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 25 drift= 0 alt=100 dir=right 0.77 vel=very_slow thrust=small | The pad is near, to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 25 drift= 0 alt=100 dir=left 0.87 vel=very_slow thrust=small | The pad is near, to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 25 drift= 1 alt=100 dir=right 0.77 vel=very_slow thrust=small | The pad is near, to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 25 drift=-1 alt=100 dir=left 0.87 vel=very_slow thrust=small | The pad is near, to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 25 drift= 3 alt=100 dir=right 0.77 vel=very_slow thrust=small | The pad is near, to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 25 drift=-3 alt=100 dir=left 0.87 vel=very_slow thrust=small | The pad is near, to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 60 drift=-3 alt=100 dir=right 0.93 vel=fast thrust=small | The pad is far to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 60 drift= 3 alt=100 dir=left 0.88 vel=fast thrust=small | The pad is far to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 60 drift=-1 alt=100 dir=right 0.93 vel=fast thrust=small | The pad is far to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 60 drift= 1 alt=100 dir=left 0.88 vel=fast thrust=small | The pad is far to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 60 drift= 0 alt=100 dir=right 0.93 vel=fast thrust=small | The pad is far to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 60 drift= 0 alt=100 dir=left 0.88 vel=fast thrust=small | The pad is far to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 60 drift= 1 alt=100 dir=right 0.93 vel=fast thrust=small | The pad is far to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 60 drift=-1 alt=100 dir=left 0.88 vel=fast thrust=small | The pad is far to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d= 60 drift= 3 alt=100 dir=right 0.93 vel=fast thrust=small | The pad is far to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d= 60 drift=-3 alt=100 dir=left 0.88 vel=fast thrust=small | The pad is far to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=110 drift=-3 alt=100 dir=right 0.95 vel=fast thrust=small | The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=110 drift= 3 alt=100 dir=left 0.96 vel=fast thrust=small | The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=110 drift=-1 alt=100 dir=right 0.95 vel=fast thrust=small | The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=110 drift= 1 alt=100 dir=left 0.96 vel=fast thrust=small | The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=110 drift= 0 alt=100 dir=right 0.95 vel=fast thrust=small | The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=110 drift= 0 alt=100 dir=left 0.96 vel=fast thrust=small | The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=110 drift= 1 alt=100 dir=right 0.95 vel=fast thrust=small | The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=110 drift=-1 alt=100 dir=left 0.96 vel=fast thrust=small | The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.
+✓ pad right d=110 drift= 3 alt=100 dir=right 0.95 vel=fast thrust=small | The pad is way in the distance to the right. The lander is at high altitude and is descending slowly.
+✓ pad left  d=110 drift=-3 alt=100 dir=left 0.96 vel=fast thrust=small | The pad is way in the distance to the left. The lander is at high altitude and is descending slowly.
+✓ pad above d=  2 drift=-3 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 3 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift=-1 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 1 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 0 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 0 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 1 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift=-1 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift= 3 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift=-3 alt=40 dir=none 0.91 vel=none thrust=large | The pad is directly below. The lander is at medium altitude and is descending fast.
+✓ pad right d=  8 drift=-3 alt=40 dir=right 0.97 vel=very_slow thrust=large | The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=  8 drift= 3 alt=40 dir=left 0.98 vel=very_slow thrust=large | The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=  8 drift=-1 alt=40 dir=right 0.97 vel=very_slow thrust=large | The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=  8 drift= 1 alt=40 dir=left 0.98 vel=very_slow thrust=large | The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=  8 drift= 0 alt=40 dir=right 0.97 vel=very_slow thrust=large | The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=  8 drift= 0 alt=40 dir=left 0.98 vel=very_slow thrust=large | The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=  8 drift= 1 alt=40 dir=right 0.97 vel=very_slow thrust=large | The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=  8 drift=-1 alt=40 dir=left 0.98 vel=very_slow thrust=large | The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=  8 drift= 3 alt=40 dir=right 0.97 vel=very_slow thrust=large | The pad is very near, just a little to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=  8 drift=-3 alt=40 dir=left 0.98 vel=very_slow thrust=large | The pad is very near, just a little to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 25 drift=-3 alt=40 dir=right 0.84 vel=slow thrust=large | The pad is near, to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 25 drift= 3 alt=40 dir=left 0.86 vel=slow thrust=large | The pad is near, to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 25 drift=-1 alt=40 dir=right 0.84 vel=slow thrust=large | The pad is near, to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 25 drift= 1 alt=40 dir=left 0.86 vel=slow thrust=large | The pad is near, to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 25 drift= 0 alt=40 dir=right 0.84 vel=slow thrust=large | The pad is near, to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 25 drift= 0 alt=40 dir=left 0.86 vel=slow thrust=large | The pad is near, to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 25 drift= 1 alt=40 dir=right 0.84 vel=slow thrust=large | The pad is near, to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 25 drift=-1 alt=40 dir=left 0.86 vel=slow thrust=large | The pad is near, to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 25 drift= 3 alt=40 dir=right 0.84 vel=slow thrust=large | The pad is near, to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 25 drift=-3 alt=40 dir=left 0.86 vel=slow thrust=large | The pad is near, to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 60 drift=-3 alt=40 dir=right 0.95 vel=fast thrust=large | The pad is far to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 60 drift= 3 alt=40 dir=left 0.89 vel=fast thrust=large | The pad is far to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 60 drift=-1 alt=40 dir=right 0.95 vel=fast thrust=large | The pad is far to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 60 drift= 1 alt=40 dir=left 0.89 vel=fast thrust=large | The pad is far to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 60 drift= 0 alt=40 dir=right 0.95 vel=fast thrust=large | The pad is far to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 60 drift= 0 alt=40 dir=left 0.89 vel=fast thrust=large | The pad is far to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 60 drift= 1 alt=40 dir=right 0.95 vel=fast thrust=large | The pad is far to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 60 drift=-1 alt=40 dir=left 0.89 vel=fast thrust=large | The pad is far to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d= 60 drift= 3 alt=40 dir=right 0.95 vel=fast thrust=large | The pad is far to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d= 60 drift=-3 alt=40 dir=left 0.89 vel=fast thrust=large | The pad is far to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=110 drift=-3 alt=40 dir=right 0.97 vel=fast thrust=large | The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=110 drift= 3 alt=40 dir=left 0.96 vel=fast thrust=large | The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=110 drift=-1 alt=40 dir=right 0.97 vel=fast thrust=large | The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=110 drift= 1 alt=40 dir=left 0.96 vel=fast thrust=large | The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=110 drift= 0 alt=40 dir=right 0.97 vel=fast thrust=large | The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=110 drift= 0 alt=40 dir=left 0.96 vel=fast thrust=large | The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=110 drift= 1 alt=40 dir=right 0.97 vel=fast thrust=large | The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=110 drift=-1 alt=40 dir=left 0.96 vel=fast thrust=large | The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.
+✓ pad right d=110 drift= 3 alt=40 dir=right 0.97 vel=fast thrust=large | The pad is way in the distance to the right. The lander is at medium altitude and is descending fast.
+✓ pad left  d=110 drift=-3 alt=40 dir=left 0.96 vel=fast thrust=large | The pad is way in the distance to the left. The lander is at medium altitude and is descending fast.
+✓ pad above d=  2 drift=-3 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 3 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift=-1 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 1 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 0 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 0 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 1 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift=-1 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift= 3 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift=-3 alt=15 dir=none 0.92 vel=none thrust=small | The pad is directly below. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=  8 drift=-3 alt=15 dir=right 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=  8 drift= 3 alt=15 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=  8 drift=-1 alt=15 dir=right 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=  8 drift= 1 alt=15 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=  8 drift= 0 alt=15 dir=right 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=  8 drift= 0 alt=15 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=  8 drift= 1 alt=15 dir=right 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=  8 drift=-1 alt=15 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=  8 drift= 3 alt=15 dir=right 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=  8 drift=-3 alt=15 dir=left 0.98 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 25 drift=-3 alt=15 dir=right 0.83 vel=very_slow thrust=small | The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 25 drift= 3 alt=15 dir=left 0.82 vel=very_slow thrust=small | The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 25 drift=-1 alt=15 dir=right 0.83 vel=very_slow thrust=small | The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 25 drift= 1 alt=15 dir=left 0.82 vel=very_slow thrust=small | The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 25 drift= 0 alt=15 dir=right 0.83 vel=very_slow thrust=small | The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 25 drift= 0 alt=15 dir=left 0.82 vel=very_slow thrust=small | The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 25 drift= 1 alt=15 dir=right 0.83 vel=very_slow thrust=small | The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 25 drift=-1 alt=15 dir=left 0.82 vel=very_slow thrust=small | The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 25 drift= 3 alt=15 dir=right 0.83 vel=very_slow thrust=small | The pad is near, to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 25 drift=-3 alt=15 dir=left 0.82 vel=very_slow thrust=small | The pad is near, to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 60 drift=-3 alt=15 dir=right 0.91 vel=fast thrust=small | The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 60 drift= 3 alt=15 dir=left 0.84 vel=fast thrust=medium | The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 60 drift=-1 alt=15 dir=right 0.91 vel=fast thrust=small | The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 60 drift= 1 alt=15 dir=left 0.84 vel=fast thrust=medium | The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 60 drift= 0 alt=15 dir=right 0.91 vel=fast thrust=small | The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 60 drift= 0 alt=15 dir=left 0.84 vel=fast thrust=medium | The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 60 drift= 1 alt=15 dir=right 0.91 vel=fast thrust=small | The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 60 drift=-1 alt=15 dir=left 0.84 vel=fast thrust=medium | The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d= 60 drift= 3 alt=15 dir=right 0.91 vel=fast thrust=small | The pad is far to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d= 60 drift=-3 alt=15 dir=left 0.84 vel=fast thrust=medium | The pad is far to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=110 drift=-3 alt=15 dir=right 0.93 vel=fast thrust=medium | The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=110 drift= 3 alt=15 dir=left 0.91 vel=fast thrust=medium | The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=110 drift=-1 alt=15 dir=right 0.93 vel=fast thrust=medium | The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=110 drift= 1 alt=15 dir=left 0.91 vel=fast thrust=medium | The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=110 drift= 0 alt=15 dir=right 0.93 vel=fast thrust=medium | The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=110 drift= 0 alt=15 dir=left 0.91 vel=fast thrust=medium | The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=110 drift= 1 alt=15 dir=right 0.93 vel=fast thrust=medium | The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=110 drift=-1 alt=15 dir=left 0.91 vel=fast thrust=medium | The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad right d=110 drift= 3 alt=15 dir=right 0.93 vel=fast thrust=medium | The pad is way in the distance to the right. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad left  d=110 drift=-3 alt=15 dir=left 0.91 vel=fast thrust=medium | The pad is way in the distance to the left. The lander is near the ground (low altitude) and is descending slowly.
+✓ pad above d=  2 drift=-3 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 3 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift=-1 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 1 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 0 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 0 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 1 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift=-1 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift= 3 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad above d=  2 drift=-3 alt=2 dir=none 0.96 vel=none thrust=small | The pad is directly below. The lander is about to touch down and is descending very slowly.
+✓ pad right d=  8 drift=-3 alt=2 dir=right 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d=  8 drift= 3 alt=2 dir=left 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=  8 drift=-1 alt=2 dir=right 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d=  8 drift= 1 alt=2 dir=left 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=  8 drift= 0 alt=2 dir=right 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d=  8 drift= 0 alt=2 dir=left 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=  8 drift= 1 alt=2 dir=right 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d=  8 drift=-1 alt=2 dir=left 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=  8 drift= 3 alt=2 dir=right 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d=  8 drift=-3 alt=2 dir=left 0.69 vel=very_slow thrust=small | The pad is very near, just a little to the left. The lander is about to touch down and is descending very slowly.
+✗ pad right d= 25 drift=-3 alt=2 dir=none 0.60 vel=very_slow thrust=small | The pad is near, to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d= 25 drift= 3 alt=2 dir=none 0.61 vel=very_slow thrust=small | The pad is near, to the left. The lander is about to touch down and is descending very slowly.
+✗ pad right d= 25 drift=-1 alt=2 dir=none 0.60 vel=very_slow thrust=small | The pad is near, to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d= 25 drift= 1 alt=2 dir=none 0.61 vel=very_slow thrust=small | The pad is near, to the left. The lander is about to touch down and is descending very slowly.
+✗ pad right d= 25 drift= 0 alt=2 dir=none 0.60 vel=very_slow thrust=small | The pad is near, to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d= 25 drift= 0 alt=2 dir=none 0.61 vel=very_slow thrust=small | The pad is near, to the left. The lander is about to touch down and is descending very slowly.
+✗ pad right d= 25 drift= 1 alt=2 dir=none 0.60 vel=very_slow thrust=small | The pad is near, to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d= 25 drift=-1 alt=2 dir=none 0.61 vel=very_slow thrust=small | The pad is near, to the left. The lander is about to touch down and is descending very slowly.
+✗ pad right d= 25 drift= 3 alt=2 dir=none 0.60 vel=very_slow thrust=small | The pad is near, to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d= 25 drift=-3 alt=2 dir=none 0.61 vel=very_slow thrust=small | The pad is near, to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d= 60 drift=-3 alt=2 dir=right 0.59 vel=fast thrust=small | The pad is far to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d= 60 drift= 3 alt=2 dir=left 0.46 vel=fast thrust=small | The pad is far to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d= 60 drift=-1 alt=2 dir=right 0.59 vel=fast thrust=small | The pad is far to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d= 60 drift= 1 alt=2 dir=left 0.46 vel=fast thrust=small | The pad is far to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d= 60 drift= 0 alt=2 dir=right 0.59 vel=fast thrust=small | The pad is far to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d= 60 drift= 0 alt=2 dir=left 0.46 vel=fast thrust=small | The pad is far to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d= 60 drift= 1 alt=2 dir=right 0.59 vel=fast thrust=small | The pad is far to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d= 60 drift=-1 alt=2 dir=left 0.46 vel=fast thrust=small | The pad is far to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d= 60 drift= 3 alt=2 dir=right 0.59 vel=fast thrust=small | The pad is far to the right. The lander is about to touch down and is descending very slowly.
+✓ pad left  d= 60 drift=-3 alt=2 dir=left 0.46 vel=fast thrust=small | The pad is far to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=110 drift=-3 alt=2 dir=right 0.52 vel=fast thrust=small | The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d=110 drift= 3 alt=2 dir=none 0.51 vel=fast thrust=small | The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=110 drift=-1 alt=2 dir=right 0.52 vel=fast thrust=small | The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d=110 drift= 1 alt=2 dir=none 0.51 vel=fast thrust=small | The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=110 drift= 0 alt=2 dir=right 0.52 vel=fast thrust=small | The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d=110 drift= 0 alt=2 dir=none 0.51 vel=fast thrust=small | The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=110 drift= 1 alt=2 dir=right 0.52 vel=fast thrust=small | The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d=110 drift=-1 alt=2 dir=none 0.51 vel=fast thrust=small | The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.
+✓ pad right d=110 drift= 3 alt=2 dir=right 0.52 vel=fast thrust=small | The pad is way in the distance to the right. The lander is about to touch down and is descending very slowly.
+✗ pad left  d=110 drift=-3 alt=2 dir=none 0.51 vel=fast thrust=small | The pad is way in the distance to the left. The lander is about to touch down and is descending very slowly.
+SUMMARY tev1:4b /tmp/s1/prose-head.json: pad right 75/80, pad left 70/80, above 40/40, mirrored pairs 95/100

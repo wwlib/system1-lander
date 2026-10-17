@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hostTable, send } from './providers/index.mjs';
 import { ACTIONS, DATA_QUESTIONS, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
-import { proseSet, perceive, proseMap, PROSE_TABLE } from './prose.mjs';
+import { proseSet, perceive, proseMap, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
 import {
   POLICY_QUESTIONS,
   POLICY_TABLE,
@@ -281,11 +281,48 @@ let lastProseCall = null;
 const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
 
 /**
+ * The landing-pad choice (pads layout): its own call, made when padChoiceDue says so.
+ * @param {Ship} ship @param {string} model @param {import('./prose.mjs').ProseQuestionSet} questionSet
+ * @param {DecideOptions} options
+ * @returns {Promise<{ target: string, confidence: number, t: number, state: string, probabilities: Record<string, number>, ms: number } | null>}
+ */
+async function choosePad(ship, model, questionSet, options) {
+  if (!questionSet.pad_choice || !padChoiceDue(ship, questionSet)) {
+    return null;
+  }
+  const state = padChoiceState(ship);
+  const request = {
+    model,
+    state,
+    questions: { landing_pad: questionSet.pad_choice.question },
+    keep_alive: KEEP_ALIVE,
+  };
+  const upstream = await call(options.host, request);
+  const answer = upstream.j.answers?.landing_pad || {};
+  if (!answer.choice) {
+    return null;
+  }
+  const probabilities = answer.probabilities || {};
+  return {
+    target: answer.choice,
+    confidence: Math.round((probabilities[answer.choice] ?? 0) * 100) / 100,
+    t: ship.t,
+    state,
+    probabilities,
+    ms: upstream.ms,
+  };
+}
+
+/**
  * PROSE: one call. state = perception sentences; questions come from lander/modes/prose.json.
  * @param {Ship} ship @param {string} model @param {number} startedAt @param {DecideOptions} options
  */
 async function decideProse(ship, model, startedAt, options) {
   const questionSet = proseSet();
+  const padChoice = await choosePad(ship, model, questionSet, options);
+  if (padChoice) {
+    ship = { ...ship, target: padChoice.target, targetT: padChoice.t, targetP: padChoice.confidence };
+  }
   const request = {
     model,
     state: perceive(ship, questionSet),
@@ -298,6 +335,7 @@ async function decideProse(ship, model, startedAt, options) {
     const reused = lastProseCall.result;
     return {
       ...reused,
+      pad: padChoice,
       sameScene: true,
       usage: { input_tokens: 0, output_tokens: 0, calls: 0 },
       ms: Math.round(performance.now() - startedAt),
@@ -316,6 +354,7 @@ async function decideProse(ship, model, startedAt, options) {
     action: actionName(thrust, controls.tilt),
     throttle: throttlePercent(controls.throttle),
     tvx: controls.tvx,
+    pad: padChoice,
     answers,
     table: PROSE_TABLE,
     probs: probsFor(thrust, controls.tilt),
