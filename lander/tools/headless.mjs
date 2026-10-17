@@ -218,7 +218,7 @@ async function flyOne(start) {
     '->',
     ship.outcome,
     `score=${score}${breakdown}`,
-    `x=${ship.x.toFixed(1)} t=${ship.t.toFixed(1)}s fuel=${ship.fuel.toFixed(0)} decisions=${latencies.length} ` +
+    `x=${ship.x.toFixed(1)} touch_vx=${ship.vx.toFixed(2)} touch_vy=${ship.vy.toFixed(2)} t=${ship.t.toFixed(1)}s fuel=${ship.fuel.toFixed(0)} decisions=${latencies.length} ` +
       `avg=${average(latencies).toFixed(0)}ms maxfall=${maxFall.toFixed(1)} ` +
       `avgthr=${(throttleSum / Math.max(1, latencies.length)).toFixed(2)} ` +
       `rate=${loop.actualRate(ship).toFixed(1)}/s discarded=${loop.stats.discarded} ` +

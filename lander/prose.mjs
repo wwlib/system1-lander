@@ -21,6 +21,8 @@ import { padsFor, padCenter, targetPad, terrainY } from './sim.mjs';
  *   'approach' (drift toward / away from the pad), 'drift' (drift left / right)
  * @property {Record<string, { type: string, instructions: string, criteria: Record<string, string> }>} questions
  * @property {PadChoiceSet} [pad_choice]  the landing-pad question (pads layout only)
+ * @property {{ about?: string, questions: Record<string, { type: string, instructions: string, criteria: Record<string, string> }> }} [final_approach]
+ *   the questions asked instead of `questions` while the ship is in the final-approach zone
  */
 
 /**
@@ -218,11 +220,15 @@ export function terrainSentence(ship, pad) {
  * "The pad is far off to your right. You are left of the pad.\n
  *  The lander is at high altitude and is descending fast."
  * Distances and altitude are measured to the target pad.
+ * In the final-approach zone (see inFinalApproach) the scene switches to finalApproachScene.
  * @param {Ship} ship
  * @param {ProseQuestionSet} questionSet
  * @returns {string}
  */
 export function perceive(ship, questionSet) {
+  if (questionSet.final_approach && inFinalApproach(ship)) {
+    return finalApproachScene(ship);
+  }
   const pad = targetPad(ship);
   const distanceToPad = padCenter(pad) - ship.x;
   const altitude = ship.y - pad.y;
@@ -242,6 +248,175 @@ export function perceive(ship, questionSet) {
     }
   }
   return sentences.join('\n');
+}
+
+// ---- Final approach (the last few meters over the pad) ----
+
+/** The final-approach zone: below this height above the target pad, m. */
+export const FINAL_APPROACH_HEIGHT = 18;
+
+/** …and no further than this outside the target pad's edges, m. */
+export const FINAL_APPROACH_MARGIN = 15;
+
+/**
+ * Is the ship in the final-approach zone: low over (or just beside) the target pad?
+ * @param {Ship} ship
+ * @returns {boolean}
+ */
+export function inFinalApproach(ship) {
+  const pad = targetPad(ship);
+  const heightAbovePad = ship.y - pad.y;
+  const isLow = heightAbovePad >= 0 && heightAbovePad < FINAL_APPROACH_HEIGHT;
+  const isOverPad = ship.x > pad.x0 - FINAL_APPROACH_MARGIN && ship.x < pad.x1 + FINAL_APPROACH_MARGIN;
+  return isLow && isOverPad;
+}
+
+/**
+ * Where the legs are over the pad, with the side of the pad (or its middle) stated too:
+ * "Your legs are over the middle of the pad." /
+ * "Your legs are over the pad, near its left edge; the middle of the pad is just off to your right." /
+ * "Your legs are past the pad's left edge, over rough ground; the pad is just off to your right."
+ * @param {Ship} ship @param {Pad} pad
+ * @returns {string}
+ */
+export function footingSentence(ship, pad) {
+  const shortOfLeftEdge = pad.x0 - ship.x;
+  const pastRightEdge = ship.x - pad.x1;
+  if (shortOfLeftEdge > 4) {
+    return 'You are short of the pad, over rough ground; the pad is a short way off to your right.';
+  }
+  if (pastRightEdge > 4) {
+    return 'You are short of the pad, over rough ground; the pad is a short way off to your left.';
+  }
+  if (shortOfLeftEdge > 0) {
+    return "Your legs are past the pad's left edge, over rough ground; the pad is just off to your right.";
+  }
+  if (pastRightEdge > 0) {
+    return "Your legs are past the pad's right edge, over rough ground; the pad is just off to your left.";
+  }
+  const halfWidth = (pad.x1 - pad.x0) / 2;
+  const offset = ship.x - padCenter(pad);
+  if (Math.abs(offset) < halfWidth * 0.6) {
+    return 'Your legs are over the middle of the pad.';
+  }
+  const edgeSide = offset > 0 ? 'right' : 'left';
+  const middleSide = offset > 0 ? 'left' : 'right';
+  return `Your legs are over the pad, near its ${edgeSide} edge; the middle of the pad is just off to your ${middleSide}.`;
+}
+
+/**
+ * Height above the pad in fine bands: "You are almost touching the pad."
+ * @param {number} heightAbovePad  m
+ * @returns {string}
+ */
+export function heightSentence(heightAbovePad) {
+  if (heightAbovePad < 1.5) {
+    return 'You are almost touching the pad.';
+  }
+  if (heightAbovePad < 4) {
+    return 'You are a couple of meters above the pad.';
+  }
+  if (heightAbovePad < 8) {
+    return 'You are a few meters above the pad.';
+  }
+  if (heightAbovePad < 13) {
+    return 'You are a little way above the pad.';
+  }
+  return 'You are some way above the pad, coming in to land.';
+}
+
+/**
+ * The sink rate as an impression: "You are settling gently." / "You are dropping hard."
+ * @param {number} verticalSpeed  m/s (+ = climbing)
+ * @returns {string}
+ */
+export function sinkSentence(verticalSpeed) {
+  if (verticalSpeed > 0.3) {
+    return 'You are rising.';
+  }
+  const sinkRate = -verticalSpeed;
+  if (sinkRate < 1.2) {
+    return 'You are settling gently.';
+  }
+  if (sinkRate < 2.5) {
+    return 'You are sinking steadily.';
+  }
+  if (sinkRate < 3.5) {
+    return 'You are dropping fast.';
+  }
+  return 'You are dropping hard.';
+}
+
+/**
+ * Sideways motion as an impression, relative to the pad:
+ * "You are sliding sideways quickly to the left, toward the pad's left edge." / "You are nearly still sideways."
+ * @param {Ship} ship @param {Pad} pad
+ * @returns {string}
+ */
+export function slideSentence(ship, pad) {
+  const sidewaysSpeed = Math.abs(ship.vx);
+  if (sidewaysSpeed < 0.3) {
+    return 'You are nearly still sideways.';
+  }
+  const direction = ship.vx > 0 ? 'right' : 'left';
+  let manner = 'sliding';
+  if (sidewaysSpeed < 1) {
+    manner = 'sliding slowly';
+  } else if (sidewaysSpeed >= 1.8) {
+    manner = 'sliding sideways quickly';
+  }
+  const towardCenter = Math.sign(padCenter(pad) - ship.x) === Math.sign(ship.vx);
+  const isOverPad = ship.x >= pad.x0 && ship.x <= pad.x1;
+  let where = `toward the pad's ${direction} edge`;
+  if (towardCenter) {
+    where = 'toward the middle of the pad';
+  } else if (!isOverPad) {
+    where = 'away from the pad';
+  }
+  return `You are ${manner} to the ${direction}, ${where}.`;
+}
+
+/**
+ * The lean: "You are leaning left." / "You are upright."
+ * @param {number} angle  rad (+ = leaning right)
+ * @returns {string}
+ */
+export function leanSentence(angle) {
+  if (Math.abs(angle) < 0.05) {
+    return 'You are upright.';
+  }
+  const side = angle > 0 ? 'right' : 'left';
+  return `You are leaning ${side}.`;
+}
+
+/**
+ * The final-approach scene, one sentence per line, e.g.
+ * "Your legs are over the pad, near its left edge; the middle of the pad is just off to your right.\n You are a few meters above the pad.\n
+ *  You are sinking steadily.\n You are sliding slowly to the left, toward the pad's left edge.\n You are upright."
+ * @param {Ship} ship
+ * @returns {string}
+ */
+export function finalApproachScene(ship) {
+  const pad = targetPad(ship);
+  const sentences = [
+    footingSentence(ship, pad),
+    heightSentence(ship.y - pad.y),
+    sinkSentence(ship.vy),
+    slideSentence(ship, pad),
+    leanSentence(ship.angle),
+  ];
+  return sentences.join('\n');
+}
+
+/**
+ * The questions to ask now: the final-approach set inside the zone (when prose.json has one), else the usual set.
+ * @param {Ship} ship @param {ProseQuestionSet} questionSet
+ */
+export function questionsFor(ship, questionSet) {
+  if (questionSet.final_approach && inFinalApproach(ship)) {
+    return questionSet.final_approach.questions;
+  }
+  return questionSet.questions;
 }
 
 // ---- Landing-pad choice (pads layout) ----
@@ -359,6 +534,7 @@ export const PROSE_TABLE = [
   'target vx = sign(flight_direction: right +1, left −1, none 0) × speed(flight_velocity: fast 4, slow 2, very_slow 0.8, none 0 m/s)',
   'tilt toward (target vx − actual vx) if the gap > 0.4 m/s, else center; center below 4 m (touch down upright)',
   'pads layout: pad_choice (own call, every few s until near and low) picks the target pad; distances and altitude are to that pad',
+  'final approach (< 18 m above the target pad, within 15 m of its edges): the scene switches to legs vs pad edges, fine height, sink and slide impressions, lean; questions from final_approach in prose.json',
   'throttle = Σ P(level) × {none 0, small 0.3, medium 0.55, large 1}  (expected value of the choice probabilities; hover ≈ 0.41)',
 ];
 

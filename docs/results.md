@@ -173,3 +173,44 @@ Mac, tev1:4b, random seeds 1–6, 4/s, all runs on the same evening.
 The single-change crashes were all seed 1: horizontal speed at touchdown (vx 2.3–3.4 m/s). On these six seeds the new format is about neutral. It lands as well as the baseline, but scores run slightly lower and vertical touchdown speed did not improve. Run-to-run spread is as large as the difference.
 
 Logs: `results/batch23-*.log`.
+
+## Final approach: its own scene and questions
+
+Mac, tev1:4b, random seeds 1–6, 4/s, each config run twice (host noise).
+
+When the ship is **below 18 m above the target pad and within 15 m of its edges** (`inFinalApproach()`), `perceive()` switches to a final-approach scene. It is still only a description of what the pilot would see:
+
+```
+Your legs are over the pad, near its left edge; the middle of the pad is just off to your right.
+You are a few meters above the pad.
+You are dropping fast.
+You are sliding sideways quickly to the left, toward the pad's left edge.
+You are upright.
+```
+
+- **Legs vs pad edges:** over the middle / near an edge (the middle is off to one side) / past an edge over rough ground / short of the pad (the pad is a short way off to one side).
+- **Height:** some way above, coming in to land (≥ 13 m) / a little way / a few meters / a couple of meters / almost touching (< 1.5 m).
+- **Sink:** rising / settling gently (< 1.2 m/s) / sinking steadily / dropping fast / dropping hard (≥ 3.5 m/s).
+- **Slide:** nearly still / sliding slowly / sliding / sliding sideways quickly (≥ 1.8 m/s), toward the middle of the pad, toward an edge, or away from the pad.
+- **Lean:** upright / leaning left / leaning right.
+
+In the zone, the questions come from `final_approach` in `prose.json`, with the same three keys, so `proseMap()` and the code safety limits stay unchanged. Their criteria are phrased in terms of these impressions. The state has no instructions.
+
+Iterations (12 flights per layout each):
+
+| version | classic landed | pads landed | mean \|vx\| / max | mean \|vy\| / max | off-pad |
+|---|---|---|---|---|---|
+| baseline (no final scene) | 11/12 (6.87, 5.95) | 12/12 (12.83, 12.92) | 0.73 / 3.76 classic | 2.68 / 3.56 classic, 2.76 pads | 0 |
+| v1: zone 14 m, ±6 m | 10/12 | 12/12 | 0.67 / 2.43 | 1.76 | 0 |
+| v2: zone 18 m, ±15 m, "short of the pad" | 12/12 | 11/12 | 0.33 / 1.35 | 1.70 / 1.55 | 1 |
+| v3: + "the middle of the pad is off to your right" | 12/12 | 10/12 | 0.50 / 1.31 | 1.60 / 1.67 | 2 |
+| **v4: + slide criteria (hold still while sliding), middle band 60%** | **12/12 (7.97, 8.48)** | **12/12 (14.08, 14.95)** | 0.32 / 0.45 classic, 0.18 / 0.65 pads | 1.76 / 2.46 classic, 1.81 / 2.40 pads | 0 |
+
+- **Vertical touchdown speed fell from about 2.7 to 1.8 m/s,** because "dropping fast / dropping hard" in the last meters draws large thrust. Scores went up: classic averaged 6.4 before and 8.2 after; pads averaged 12.9 before and 14.5 after.
+- **Sideways crashes went away.** In the baseline, seed 1 crashed with vx 3.8. In v1 the zone was too small: the ship came in at 3.7 m/s and had no time to slow down, so v2 widened it.
+- **Off-pad misses on the narrow pads came from v2 and v3.** "Near its left edge" alone made the model pick "left". Saying which side the middle is on, and holding still while sliding, fixed it in v4.
+
+The game's call history also lists the pad-choice call as its own **pad choice** entry, with the full request body and response, and it counts in the call count.
+
+Logs: `results/batch24-*.log` (base = before, v4 = kept).
+

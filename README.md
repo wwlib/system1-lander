@@ -31,12 +31,12 @@ In every mode, **code** maps the answers to controls with a small fixed table (s
 
 ## Key findings
 
-- **Prose + choice criteria landings.** On a GPU, prose with option descriptions landed **6/6** (tev1:4b and nimble:9b; avg scores ~7–8). On the Mac mini with the current prose, classic pad **6/6** (avg score 6.93; 7.38 for the previous prose on the same evening). Earlier "raw controls" scene variants got 0/6 — the model has to judge the situation, not fly the stick.
+- **Prose + choice criteria landings.** On a GPU, prose with option descriptions landed **6/6** (tev1:4b and nimble:9b; avg scores ~7–8). On the Mac mini with the current prose, classic pad **6/6** in both runs (avg score 7.97 / 8.48 with the final-approach scene; 6.87 / 5.95 without). Earlier "raw controls" scene variants got 0/6 — the model has to judge the situation, not fly the stick.
 - **Mac ~1.2 s per new scene vs ~10 ms cache hits.** A changed prose body takes about **1.2 s** (median of 8 scenes: 1191 ms); an identical body returns in ~5–11 ms with a full prompt-cache hit. MLX shows the cache benefit; Q8_0 on the same Mac did not.
 - **4/s default + same-scene skip.** Decision rate defaults to 4/s (sim time). When the prose body is unchanged (< 1 sim-second old), the server reuses the last answer instead of calling the model.
 - **Impulse limits and touchdown leveling are code safety.** Burn lease, climb guard, and leveling tilt within 4 m of the ground (`touchdownTilt` in `pilot-loop.mjs`) are fixed limits in code, not model behavior. Without them, a slow host empties the tank (and can fly out of the world).
 - **Flat approach zones** (`APPROACH` in `sim.mjs`) because the model cannot see terrain: ground is pad height within 20 m of every pad edge; bumps grow back over the next 25 m.
-- **Choose-pad is opt-in (`?pads=1` / `LAYOUT=pads`) and lands 6/6 (latest runs; 5/6 earlier).** Three pads (narrow ×2, wide ×1, ridge ×3); `pad_choice` in `prose.json` is its own call, re-asked every 5 sim s. Stays opt-in vs classic 6/6.
+- **Choose-pad is opt-in (`?pads=1` / `LAYOUT=pads`) and lands 6/6 (latest runs, avg 14.08 / 14.95 with the final-approach scene; 5/6 earlier).** Three pads (narrow ×2, wide ×1, ridge ×3); `pad_choice` in `prose.json` is its own call, re-asked every 5 sim s. Stays opt-in vs classic 6/6.
 
 Full tables and tuning history: [docs/results.md](docs/results.md).
 

@@ -483,11 +483,11 @@ function appliedNote(call) {
 function singleCallBodyHTML(call) {
   const { questions, ...restOfRequest } = call.res.upstream.request;
   const questionsJson = esc(JSON.stringify(questions, null, 1));
-  // The first call shows the questions; later ones fold them away (they never change).
-  const isOldestCall = call.id === calls[0]?.id;
+  // The first call shows the questions; later ones fold them away (they change only for the final approach).
+  const isOldestCall = call.id === calls.find((logged) => logged.kind !== 'pad')?.id;
   const questionsHTML = isOldestCall
     ? `<div class="meta">questions</div><pre>${questionsJson}</pre>`
-    : `<details><summary>questions (constant)</summary><pre>${questionsJson}</pre></details>`;
+    : `<details><summary>questions</summary><pre>${questionsJson}</pre></details>`;
   const usage = call.res.usage;
   return (
     `<div class="meta">request → ${esc(call.res.upstream.url)}</div>` +
@@ -502,8 +502,37 @@ function singleCallBodyHTML(call) {
   );
 }
 
+/**
+ * A pad-choice log entry (pads layout): the landing-pad call the server made before a flight call,
+ * with its full request body and response.
+ * @param {any} call
+ */
+function padCallHTML(call) {
+  const pad = call.res;
+  const { questions, ...restOfRequest } = pad.upstream.request;
+  const usage = pad.usage;
+  const body =
+    `<div class="meta">request → ${esc(pad.upstream.url)}</div>` +
+    `<pre>${esc(JSON.stringify(restOfRequest, null, 1))}</pre>` +
+    `<details><summary>questions</summary><pre>${esc(JSON.stringify(questions, null, 1))}</pre></details>` +
+    `<div class="meta">result: <b style="color:#fc6">${esc(pad.target)}</b> · ` +
+    `confidence ${Math.round(pad.confidence * 100)}% · ${pad.ms} ms · ` +
+    `tokens in ${usage?.input_tokens ?? '?'} / out ${usage?.output_tokens ?? '?'}</div>` +
+    `<div class="meta">${probabilityList(pad.probabilities)}</div>` +
+    `<details><summary>raw response</summary>` +
+    `<pre>${esc(JSON.stringify(pad.upstream.response, null, 1))}</pre></details>`;
+  return (
+    `<div class="call" style="border-left-color:#fc6">` +
+    `\n   <div class="hd"><span>#${call.id} · <b>pad choice</b> · ${call.wall} · sim t=${call.sentT.toFixed(2)}s</span>` +
+    `<span class="tag">pad choice (before flight call #${call.flightCallId})</span></div>${body}</div>`
+  );
+}
+
 /** One entry in the call log. @param {any} call */
 function callHTML(call) {
+  if (call.kind === 'pad') {
+    return padCallHTML(call);
+  }
   const request = call.res?.upstream?.request;
   let body = '';
   if (request && call.res.upstream.multi) {
@@ -797,6 +826,31 @@ function renderHow(call) {
 
 // ---- Asking the model ----
 
+/**
+ * Log the pad-choice call (pads layout) as its own entry, just before the flight call it came with.
+ * @param {any} call  the flight call @param {any} decision
+ */
+function logPadCall(call, decision) {
+  if (!decision.pad?.upstream) {
+    return;
+  }
+  callNumber = callNumber + 1;
+  const padCall = {
+    id: callNumber,
+    kind: 'pad',
+    flightCallId: call.id,
+    wall: call.wall,
+    sentT: call.sentT,
+    status: 'done',
+    res: decision.pad,
+  };
+  const flightIndex = calls.indexOf(call);
+  calls.splice(Math.max(0, flightIndex), 0, padCall);
+  if (calls.length > MAX_LOGGED_CALLS) {
+    calls.shift();
+  }
+}
+
 /** Send the ship state to /decide, unless a call is already in flight. */
 async function ask() {
   if (!aiPiloting || paused || inflightCall || !pilot.shouldSend(ship)) {
@@ -840,6 +894,7 @@ async function ask() {
       await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
     }
     call.res = decision;
+    logPadCall(call, decision);
     if (generation !== flightGeneration) {
       call.status = 'stale';
     } else if (paused) {

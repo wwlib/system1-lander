@@ -139,6 +139,23 @@ export function examples() {
     allProseQuestions,
     'the side is stated twice; drift is toward / away from the pad',
   );
+  if (proseQuestions.final_approach) {
+    const finalApproachQuestions = proseQuestions.final_approach.questions;
+    const finalApproachShips = [
+      ['final approach: near the left edge, sliding left fast', { x: 123, y: 16, vx: -2.4, vy: -2.8 }],
+      ['final approach: over the middle, settling gently', { x: 136, y: 13, vx: 0.2, vy: -0.9 }],
+      ['final approach: just short of the pad, dropping hard', { x: 117, y: 14, vx: 1.2, vy: -3.8 }],
+    ];
+    for (const [name, overrides] of finalApproachShips) {
+      addExample(
+        'prose',
+        /** @type {string} */ (name),
+        perceive(newState(/** @type {any} */ (overrides)), proseQuestions),
+        finalApproachQuestions,
+        'final-approach scene (below 18 m over the target pad, within 15 m of its edges) with its own questions',
+      );
+    }
+  }
   if (proseQuestions.pad_choice) {
     const padQuestion = { landing_pad: proseQuestions.pad_choice.question };
     const choosePadShips = [

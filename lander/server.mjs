@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hostTable, send } from './providers/index.mjs';
 import { ACTIONS, DATA_QUESTIONS, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
-import { proseSet, perceive, proseMap, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
+import { proseSet, perceive, questionsFor, proseMap, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
 import {
   POLICY_QUESTIONS,
   POLICY_TABLE,
@@ -284,7 +284,8 @@ const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
  * The landing-pad choice (pads layout): its own call, made when padChoiceDue says so.
  * @param {Ship} ship @param {string} model @param {import('./prose.mjs').ProseQuestionSet} questionSet
  * @param {DecideOptions} options
- * @returns {Promise<{ target: string, confidence: number, t: number, state: string, probabilities: Record<string, number>, ms: number } | null>}
+ * @returns {Promise<{ target: string, confidence: number, t: number, state: string, probabilities: Record<string, number>, ms: number, usage: any, upstream: any } | null>}
+ *   `upstream` carries the full request body and response so the game can log the pad call like a flight call.
  */
 async function choosePad(ship, model, questionSet, options) {
   if (!questionSet.pad_choice || !padChoiceDue(ship, questionSet)) {
@@ -310,6 +311,31 @@ async function choosePad(ship, model, questionSet, options) {
     state,
     probabilities,
     ms: upstream.ms,
+    usage: upstream.j.usage,
+    upstream: {
+      url: upstream.url,
+      body: upstream.body,
+      request: upstream.request,
+      rawResponse: upstream.raw,
+      response: upstream.j,
+    },
+  };
+}
+
+/**
+ * Token usage and call count for a flight call plus the pad-choice call made with it, if any.
+ * @param {any} flightUsage  usage of the flight call (calls: 0 when it was skipped)
+ * @param {{ usage?: any } | null} padChoice
+ */
+function usageWithPad(flightUsage, padChoice) {
+  const flightCalls = flightUsage?.calls ?? 1;
+  if (!padChoice) {
+    return { ...flightUsage, calls: flightCalls };
+  }
+  return {
+    input_tokens: (flightUsage?.input_tokens || 0) + (padChoice.usage?.input_tokens || 0),
+    output_tokens: (flightUsage?.output_tokens || 0) + (padChoice.usage?.output_tokens || 0),
+    calls: flightCalls + 1,
   };
 }
 
@@ -326,7 +352,7 @@ async function decideProse(ship, model, startedAt, options) {
   const request = {
     model,
     state: perceive(ship, questionSet),
-    questions: questionSet.questions,
+    questions: questionsFor(ship, questionSet),
     keep_alive: KEEP_ALIVE,
   };
   const bodyText = JSON.stringify(request);
@@ -337,7 +363,7 @@ async function decideProse(ship, model, startedAt, options) {
       ...reused,
       pad: padChoice,
       sameScene: true,
-      usage: { input_tokens: 0, output_tokens: 0, calls: 0 },
+      usage: usageWithPad({ input_tokens: 0, output_tokens: 0, calls: 0 }, padChoice),
       ms: Math.round(performance.now() - startedAt),
       simState: ship,
     };
@@ -358,7 +384,7 @@ async function decideProse(ship, model, startedAt, options) {
     answers,
     table: PROSE_TABLE,
     probs: probsFor(thrust, controls.tilt),
-    usage: upstream.j.usage,
+    usage: usageWithPad(upstream.j.usage, padChoice),
     ms: Math.round(performance.now() - startedAt),
     fellBack: upstream.fellBack,
     upstream: {
