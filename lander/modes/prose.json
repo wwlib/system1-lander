@@ -73,9 +73,9 @@
         "type": "choice",
         "instructions": "You are piloting a lunar lander in the last few meters above the landing pad. Determine the thrust needed so the lander touches down gently",
         "criteria": {
-          "large": "a lot of thrust is needed because the lander is dropping hard, or dropping fast while only a few meters up",
-          "medium": "some thrust is needed because the lander is dropping fast or sinking steadily",
-          "small": "very little thrust is needed because the lander is settling gently",
+          "large": "a lot of thrust is needed because the lander is dropping hard",
+          "medium": "some thrust is needed because the lander is dropping fast",
+          "small": "very little thrust is needed because the lander is sinking steadily or settling gently",
           "none": "no thrust is needed because the lander is rising"
         }
       },
