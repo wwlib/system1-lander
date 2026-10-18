@@ -65,11 +65,11 @@ export const DEFAULT_SETTINGS = {
   predict: true,
   discardStale: true,
   maxAge: 1.5,
-  lease: true,
+  lease: false,
   leaseMin: 0.4,
   climbGuard: true,
   climbLimit: 1.0,
-  touchdownLevel: true,
+  touchdownLevel: false,
   levelHeight: 4,
 };
 

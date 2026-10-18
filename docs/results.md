@@ -98,7 +98,7 @@ The Mac had only tev1:4b and a small embedding model loaded for most runs; gemma
 
 Logs: `results/batch21-*.log`.
 
-## Horizontal prose, terrain clearance and touchdown leveling (current default)
+## Horizontal prose, terrain clearance and touchdown leveling
 
 Mac, tev1:4b, random seeds 1–6, 4/s.
 
@@ -106,7 +106,7 @@ Mac, tev1:4b, random seeds 1–6, 4/s.
 - **Drift relative to the pad** (`approach`): "You are drifting toward the pad, fast." / "…away from the pad, slowly." The old left/right drift sentence made direction worse, because fast drift flipped answers.
 - **Terrain clearance** (`terrain`): code checks the highest ground between the ship and the target pad. The prose says "There is a ridge ahead, higher than you." / "…just below your height." / "The ground between you and the pad is clear." `medium` thrust also covers "a ridge ahead is higher than the lander".
 - **Direction criteria name the side of the pad:** "fly to the right, toward the pad that is off to your right"; `none` is "…because you are directly above the pad".
-- **Touchdown leveling** (pilot loop, part of the impulse limits): within 4 m of the ground below, the tilt goes to center without waiting for a reply. Two earlier crashes were tilt ≥ 0.3 at touchdown, because a new-scene reply takes about 1.2 s.
+- **Touchdown leveling** (pilot loop, **off by default**): within 4 m of the ground below, the tilt goes to center without waiting for a reply. Two earlier crashes were tilt ≥ 0.3 at touchdown, because a new-scene reply takes about 1.2 s. Kept as an optional assist after ablations showed the model can land without it once final-approach prose is in place.
 
 `tools/dirprobe.mjs` is a mirrored direction probe: 160 flight scenes (5 distances × 5 drifts × 4 altitudes × both sides), with all questions in one call, as in flight.
 
@@ -214,3 +214,46 @@ The game's call history also lists the pad-choice call as its own **pad choice**
 
 Logs: `results/batch24-*.log` (base = before, v4 = kept).
 
+## Code-assist ablations (Mac mini, tev1:4b, prose, 4/s)
+
+Each assist has its own switch in `lander/pilot-loop.mjs`. Summaries from `node lander/tools/batchtable.mjs` over the logs under `results/`. **Batch25 run-1** ran while another agent held a heavy audio job — treat those flights as contended. **Batch25 run-2** is the uncontended single-assist-off set. **Batch26** is after the final-approach prose / thrust-criteria work (`d36e207`, `2a9c495`, `090915b`).
+
+### Batch25 run-2 (uncontended): one assist off at a time
+
+| config | layout | landed | avg score | fuel left | failures |
+|---|---|---|---|---|---|
+| all (everything on) | classic | **6/6** | 8.22 | 54% | – |
+| all | pads | **6/6** | 14.08 | 64% | – |
+| climb0 | classic | **6/6** | 8.23 | 54% | – |
+| climb0 | pads | **6/6** | 15.13 | 63% | – |
+| lease0 | classic | **6/6** | 8.13 | 34% | – |
+| lease0 | pads | 5/6 | 12.55 | 37% | 1 vy (fuel out) |
+| level0 | classic | **6/6** | 8.43 | 55% | – |
+| level0 | pads | 4/6 | 9.70 | 62% | 2 tilt |
+| predict0 | classic | **6/6** | 6.98 | 56% | – |
+| predict0 | pads | 5/6 | 11.18 | 63% | 1 off-pad |
+| smooth0 | classic | **6/6** | 8.32 | 52% | – |
+| smooth0 | pads | 4/6 | 8.18 | 64% | 1 vx, 1 off-pad |
+| stale0 | classic | **6/6** | 8.07 | 55% | – |
+| stale0 | pads | **6/6** | 14.43 | 62% | – |
+| off (all assists off) | classic | 2/6 | 2.50 | 7% | 4 fuel-outs |
+| off | pads | 4/6 | 10.80 | 41% | 2 fuel-outs |
+
+Classic with any single assist off: **all 6/6**. All-off still burned out of fuel on several flights (pre–thrust-criteria prose).
+
+### Batch26: steering assists off vs all off (after prose / criteria)
+
+Lease and touchdown leveling are the **steering** assists (they push toward a gentle descent / level touchdown). The new **defaults turn them off**. Smoothing, predict, stale discard, and climb guard stay on.
+
+| config | layout | runs | landed | avg score | fuel left | failures |
+|---|---|---|---|---|---|---|
+| **thrust-nosteer** (lease + level off) | classic | 2 | **11/12** | 6.96 | 38% | 1 tilt |
+| **thrust-nosteer** | pads | 2 | **11/12** | 13.27 | 39% | 1 tilt+off-pad |
+| final-nosteer (same assists; later thrust wording) | classic | 2 | **11/12** | 6.79 | 46% | 1 off-pad |
+| final-nosteer | pads | 1 | **5/6** | 10.27 | 52% | 1 off-pad |
+| **final-off** (all assists off) | classic | 2 | 6/12 | 3.22 | 39% | 5 tilt, 1 off-pad |
+| **final-off** | pads | 2 | 5/12 | 5.53 | 50% | tilt / off-pad / flew-away (no fuel-outs) |
+
+**Headline:** steering assists off (new default) **22/24** on thrust-nosteer; all assists off **11/24** with **no fuel-outs**. The gap left with all-off is mostly smoothing / prediction / the other non-steering assists, not burn lease or touchdown leveling.
+
+Logs: `results/batch25-ablation-*.log`, `results/batch26-thrust-nosteer-*.log`, `results/batch26-final-nosteer-*.log`, `results/batch26-final-off-*.log`. Table helper: `lander/tools/batchtable.mjs`.
