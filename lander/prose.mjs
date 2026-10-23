@@ -726,16 +726,22 @@ export function throttleFromAnswers(answers) {
       throttle = throttle + weight * LEVEL[level];
     }
   }
-  const trouble = answers.approach_trouble?.noul;
   const rising = answers.descent_rate?.choice === 'rising';
-  if (typeof trouble === 'number' && trouble >= 0.5 && !rising) {
+  const trouble = answers.approach_trouble?.noul ?? answers.ridge_in_the_way?.noul;
+  // With ridge_in_the_way, "the pad is still far off and the lander is low" is read from two
+  // answers the model already gave: altitude_band low and flight_velocity fast (= pad far off).
+  const farAndLow =
+    answers.ridge_in_the_way != null &&
+    answers.altitude_band?.choice === 'low' &&
+    answers.flight_velocity?.choice === 'fast';
+  if (((typeof trouble === 'number' && trouble >= 0.5) || farAndLow) && !rising) {
     throttle = Math.max(throttle, LEVEL.medium);
   }
   return throttle;
 }
 
 /** The questions that set the throttle, single or decomposed. */
-const THRUST_KEYS = ['downward_thrust_magnitude', 'altitude_band', 'descent_rate', 'approach_trouble'];
+const THRUST_KEYS = ['downward_thrust_magnitude', 'altitude_band', 'descent_rate', 'approach_trouble', 'ridge_in_the_way'];
 
 /** The questions that set the sideways target. */
 const SIDE_KEYS = ['flight_direction', 'flight_velocity'];
