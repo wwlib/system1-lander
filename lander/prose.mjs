@@ -37,7 +37,12 @@ import { padsFor, padCenter, targetPad, terrainY } from './sim.mjs';
  * @typedef {{ choice?: string, probabilities?: Record<string, number> }} ChoiceAnswer
  */
 
-const QUESTION_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'modes', 'prose.json');
+/** The question set file under lander/modes/; PROSE_FILE=prose-decomp.json picks another (experiments). */
+const QUESTION_FILE = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'modes',
+  process.env.PROSE_FILE || 'prose.json',
+);
 
 /**
  * Read lander/modes/prose.json. It is re-read on every call so edits apply without a restart.
@@ -584,12 +589,81 @@ export function proseMap(answers, ship) {
     tilt = 'center';
   }
 
-  // Throttle is the expected value over the thrust choices, using their probabilities.
-  const thrustProbabilities = answers.downward_thrust_magnitude?.probabilities || {};
-  let throttle = 0;
-  for (const [level, levelThrottle] of Object.entries(LEVEL)) {
-    throttle = throttle + (thrustProbabilities[level] || 0) * levelThrottle;
-  }
+  const throttle = throttleFromAnswers(answers);
 
   return { tvx: targetSidewaysSpeed, tilt, throttle: Math.round(throttle * 100) / 100 };
+}
+
+/**
+ * Decomposed thrust (TypeSafe-style): the model answers narrow questions and this table maps
+ * them to a thrust level. It is the same policy the single downward_thrust_magnitude criteria
+ * describe, written as a lookup: rows = altitude_band, columns = descent_rate.
+ * @type {Record<string, Record<string, keyof typeof LEVEL>>}
+ */
+export const THRUST_TABLE = {
+  high: { rising: 'none', slow: 'small', fast: 'small' },
+  medium: { rising: 'none', slow: 'small', fast: 'medium' },
+  low: { rising: 'none', slow: 'medium', fast: 'large' },
+};
+
+/**
+ * Throttle from the answers.
+ * Single question: expected value of LEVEL over downward_thrust_magnitude's probabilities.
+ * Decomposed: expected value of THRUST_TABLE over P(altitude_band) × P(descent_rate); then, when
+ * the warning approach_trouble says trouble (P ≥ 0.5) and the lander is not rising, at least medium.
+ * @param {Record<string, any>} answers
+ * @returns {number}  0..1
+ */
+export function throttleFromAnswers(answers) {
+  if (answers.downward_thrust_magnitude) {
+    const thrustProbabilities = answers.downward_thrust_magnitude.probabilities || {};
+    let throttle = 0;
+    for (const [level, levelThrottle] of Object.entries(LEVEL)) {
+      throttle = throttle + (thrustProbabilities[level] || 0) * levelThrottle;
+    }
+    return throttle;
+  }
+  const heightProbabilities = answers.altitude_band?.probabilities || {};
+  const sinkProbabilities = answers.descent_rate?.probabilities || {};
+  let throttle = 0;
+  for (const [height, row] of Object.entries(THRUST_TABLE)) {
+    for (const [sink, level] of Object.entries(row)) {
+      const weight = (heightProbabilities[height] || 0) * (sinkProbabilities[sink] || 0);
+      throttle = throttle + weight * LEVEL[level];
+    }
+  }
+  const trouble = answers.approach_trouble?.noul;
+  const rising = answers.descent_rate?.choice === 'rising';
+  if (typeof trouble === 'number' && trouble >= 0.5 && !rising) {
+    throttle = Math.max(throttle, LEVEL.medium);
+  }
+  return throttle;
+}
+
+/** The questions that set the throttle, single or decomposed. */
+const THRUST_KEYS = ['downward_thrust_magnitude', 'altitude_band', 'descent_rate', 'approach_trouble'];
+
+/**
+ * Confidence of the thrust answer: the lowest confidence among the thrust questions asked
+ * (a choice's confidence is the probability of its chosen option; a noul's is max(P, 1 − P)).
+ * One unsure question is enough to call the whole answer unsure.
+ * @param {Record<string, any>} answers
+ * @returns {number}  0..1 (1 when no thrust question was answered)
+ */
+export function thrustConfidence(answers) {
+  let lowest = 1;
+  for (const key of THRUST_KEYS) {
+    const answer = answers[key];
+    if (!answer) {
+      continue;
+    }
+    let confidence = 1;
+    if (typeof answer.noul === 'number') {
+      confidence = Math.max(answer.noul, 1 - answer.noul);
+    } else if (answer.choice) {
+      confidence = answer.probabilities?.[answer.choice] ?? 0;
+    }
+    lowest = Math.min(lowest, confidence);
+  }
+  return lowest;
 }

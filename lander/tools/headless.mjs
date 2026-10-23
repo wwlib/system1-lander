@@ -20,6 +20,8 @@
 //   SAME_SCENE_SKIP=1  reuse the last prose answer for an identical body (< 1 sim s old)
 //   DELAY_MS=0      artificial extra latency added to every reply (simulates a slow host)
 //   TRACE=1         print one line per decision: time, height, speeds, tilt, throttle, choices, scene
+//   THRUST_CUTOFF=0.5  confidence gate: a less sure thrust answer keeps the previous throttle (0 = off)
+//   PROSE_FILE=prose-decomp.json  question set under lander/modes/
 
 import '../env.mjs';
 import { newState, modelState, randomStart } from '../sim.mjs';
@@ -116,6 +118,11 @@ const totals = {
   rates: /** @type {number[]} */ ([]),
   agreements: 0,
   decisions: 0,
+  /** Decisions where the confidence gate kept the previous throttle. */
+  held: 0,
+  /** Sum of thrust-answer confidences over real (not reused) calls, and their count. */
+  confidenceSum: 0,
+  confidenceCount: 0,
   lastInputTokens: /** @type {number | undefined} */ (undefined),
   landed: 0,
   flewAway: 0,
@@ -199,6 +206,13 @@ async function flyOne(start) {
     totals.lastInputTokens = decision.usage?.input_tokens;
     throttleSum = throttleSum + (Number(decision.thrust) || 0);
     totals.decisions = totals.decisions + 1;
+    if (decision.held && !decision.sameScene) {
+      totals.held = totals.held + 1;
+    }
+    if (typeof decision.thrustConfidence === 'number' && !decision.sameScene) {
+      totals.confidenceSum = totals.confidenceSum + decision.thrustConfidence;
+      totals.confidenceCount = totals.confidenceCount + 1;
+    }
     if (agreesWithOracle(decision, ship)) {
       totals.agreements = totals.agreements + 1;
     }
@@ -286,6 +300,8 @@ console.log(
     `unique scenes/flight ${average(totals.scenes).toFixed(1)}, same-scene skips ${totals.skipped}, ` +
     `engaged: lease ${totals.engagement.leaseEvents}×/${totals.engagement.leaseSeconds.toFixed(1)}s ` +
     `climb ${totals.engagement.climbGuardEvents}×/${totals.engagement.climbGuardSeconds.toFixed(1)}s ` +
-    `level ${totals.engagement.levelEvents}×/${totals.engagement.levelSeconds.toFixed(1)}s` +
+    `level ${totals.engagement.levelEvents}×/${totals.engagement.levelSeconds.toFixed(1)}s, ` +
+    `thrust cutoff ${process.env.THRUST_CUTOFF || 0}: held ${totals.held}, ` +
+    `mean thrust confidence ${(totals.confidenceSum / Math.max(1, totals.confidenceCount)).toFixed(2)}` +
     (LAYOUT !== 'classic' ? `, layout ${LAYOUT}, landed on [${totals.pads.join(', ')}]` : ''),
 );

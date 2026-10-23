@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hostTable, send } from './providers/index.mjs';
 import { ACTIONS, DATA_QUESTIONS, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
-import { proseSet, perceive, questionsFor, proseMap, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
+import { proseSet, perceive, questionsFor, proseMap, thrustConfidence, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
 import {
   POLICY_QUESTIONS,
   POLICY_TABLE,
@@ -281,6 +281,14 @@ let lastProseCall = null;
 const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
 
 /**
+ * Confidence gate cutoff: a thrust answer less sure than this keeps the previous throttle.
+ * THRUST_CUTOFF=0 turns the gate off.
+ */
+const THRUST_CUTOFF = Number(process.env.THRUST_CUTOFF ?? 0);
+/** The last throttle sent (prose mode), for the confidence gate. @type {{ throttle: number, t: number } | null} */
+let lastThrottle = null;
+
+/**
  * The landing-pad choice (pads layout): its own call, made when padChoiceDue says so.
  * @param {Ship} ship @param {string} model @param {import('./prose.mjs').ProseQuestionSet} questionSet
  * @param {DecideOptions} options
@@ -371,6 +379,15 @@ async function decideProse(ship, model, startedAt, options) {
   const upstream = await call(options.host, request);
   const answers = upstream.j.answers || {};
   const controls = proseMap(answers, ship);
+  // Confidence gate (pure safety): when the thrust answer is unsure, keep the previous throttle.
+  const confidence = thrustConfidence(answers);
+  const isNewFlight = !lastThrottle || !(ship.t >= lastThrottle.t);
+  let held = false;
+  if (confidence < THRUST_CUTOFF && !isNewFlight && lastThrottle) {
+    controls.throttle = lastThrottle.throttle;
+    held = true;
+  }
+  lastThrottle = { throttle: controls.throttle, t: ship.t };
   const thrust = controls.throttle > 0 ? controls.throttle : false;
   const result = {
     variant: 'prose',
@@ -382,6 +399,8 @@ async function decideProse(ship, model, startedAt, options) {
     tvx: controls.tvx,
     pad: padChoice,
     answers,
+    thrustConfidence: confidence,
+    held,
     table: PROSE_TABLE,
     probs: probsFor(thrust, controls.tilt),
     usage: usageWithPad(upstream.j.usage, padChoice),
