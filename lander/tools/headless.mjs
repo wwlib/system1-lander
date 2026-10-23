@@ -20,7 +20,7 @@
 //   SAME_SCENE_SKIP=1  reuse the last prose answer for an identical body (< 1 sim s old)
 //   DELAY_MS=0      artificial extra latency added to every reply (simulates a slow host)
 //   TRACE=1         print one line per decision: time, height, speeds, tilt, throttle, choices, scene
-//   THRUST_CUTOFF=0.5  confidence gate: a less sure thrust answer keeps the previous throttle (0 = off)
+//   CONFIDENCE_CUTOFF=0.7 GATE_MODE=hold|rollup|blend  confidence gate on each answer's confidence (0 = off)
 //   PROSE_FILE=prose-decomp.json  question set under lander/modes/
 
 import '../env.mjs';
@@ -146,7 +146,9 @@ function traceDecision(ship, decision) {
       continue;
     }
     const probability = answer?.probabilities?.[answer?.choice];
-    const shown = probability != null ? ' ' + probability.toFixed(2) : '';
+    const shown =
+      (probability != null ? ' ' + probability.toFixed(2) : '') +
+      (typeof answer?.confidence === 'number' ? ' c' + answer.confidence.toFixed(2) : '');
     choices.push(`${question.split('_')[0]}=${answer?.choice}${shown}`);
   }
   const scene = String(decision.upstream?.request?.state || '').replace(/\n/g, ' | ');
@@ -154,6 +156,7 @@ function traceDecision(ship, decision) {
   console.log(
     `  t=${ship.t.toFixed(1)} y=${ship.y.toFixed(1)} vx=${ship.vx.toFixed(2)} vy=${ship.vy.toFixed(2)} ` +
       `angle=${ship.angle.toFixed(2)} fuel=${ship.fuel.toFixed(0)} throttle=${decision.throttle} tilt=${decision.tilt} ` +
+      `conf=${decision.thrustConfidence?.toFixed(2)}/${decision.sideConfidence?.toFixed(2)} gated=${(decision.gated || []).join('+') || '-'} ` +
       `${choices.join(' ')}${sameScene} :: ${scene}`,
   );
 }
@@ -206,7 +209,7 @@ async function flyOne(start) {
     totals.lastInputTokens = decision.usage?.input_tokens;
     throttleSum = throttleSum + (Number(decision.thrust) || 0);
     totals.decisions = totals.decisions + 1;
-    if (decision.held && !decision.sameScene) {
+    if (decision.gated?.length && !decision.sameScene) {
       totals.held = totals.held + 1;
     }
     if (typeof decision.thrustConfidence === 'number' && !decision.sameScene) {
@@ -301,7 +304,7 @@ console.log(
     `engaged: lease ${totals.engagement.leaseEvents}×/${totals.engagement.leaseSeconds.toFixed(1)}s ` +
     `climb ${totals.engagement.climbGuardEvents}×/${totals.engagement.climbGuardSeconds.toFixed(1)}s ` +
     `level ${totals.engagement.levelEvents}×/${totals.engagement.levelSeconds.toFixed(1)}s, ` +
-    `thrust cutoff ${process.env.THRUST_CUTOFF || 0}: held ${totals.held}, ` +
+    `gate ${process.env.GATE_MODE || 'hold'} cutoff ${process.env.CONFIDENCE_CUTOFF || 0}: gated ${totals.held}, ` +
     `mean thrust confidence ${(totals.confidenceSum / Math.max(1, totals.confidenceCount)).toFixed(2)}` +
     (LAYOUT !== 'classic' ? `, layout ${LAYOUT}, landed on [${totals.pads.join(', ')}]` : ''),
 );

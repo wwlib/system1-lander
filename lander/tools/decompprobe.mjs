@@ -72,7 +72,7 @@ for (const altitude of altitudes) {
   }
 }
 
-const cutoffs = [0.4, 0.5, 0.6, 0.7];
+const cutoffs = [0.5, 0.6, 0.7, 0.8, 0.9];
 const tally = {
   single: { right: 0, lowRight: Object.fromEntries(cutoffs.map((c) => [c, 0])), lowWrong: Object.fromEntries(cutoffs.map((c) => [c, 0])), ms: 0 },
   decomp: { right: 0, band: 0, sink: 0, trouble: 0, lowRight: Object.fromEntries(cutoffs.map((c) => [c, 0])), lowWrong: Object.fromEntries(cutoffs.map((c) => [c, 0])), ms: 0 },

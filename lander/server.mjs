@@ -17,7 +17,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hostTable, send } from './providers/index.mjs';
 import { ACTIONS, DATA_QUESTIONS, DATA_TABLE, dataMap, dataThrust } from './sim.mjs';
-import { proseSet, perceive, questionsFor, proseMap, thrustConfidence, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
+import { proseSet, perceive, questionsFor, proseMap, PROSE_TABLE, padChoiceState, padChoiceDue } from './prose.mjs';
 import {
   POLICY_QUESTIONS,
   POLICY_TABLE,
@@ -281,12 +281,13 @@ let lastProseCall = null;
 const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
 
 /**
- * Confidence gate cutoff: a thrust answer less sure than this keeps the previous throttle.
- * THRUST_CUTOFF=0 turns the gate off.
+ * Confidence gate: answers whose `confidence` is below CONFIDENCE_CUTOFF are unsure (0 = off).
+ * GATE_MODE: hold (keep the previous command) | rollup (one level up) | blend (probability-weighted).
  */
-const THRUST_CUTOFF = Number(process.env.THRUST_CUTOFF ?? 0);
-/** The last throttle sent (prose mode), for the confidence gate. @type {{ throttle: number, t: number } | null} */
-let lastThrottle = null;
+const THRUST_CUTOFF = Number(process.env.CONFIDENCE_CUTOFF ?? 0);
+const GATE_MODE = /** @type {'hold' | 'rollup' | 'blend'} */ (process.env.GATE_MODE || 'hold');
+/** The last command sent (prose mode), for hold mode. @type {{ throttle: number, tvx: number, t: number } | null} */
+let lastControls = null;
 
 /**
  * The landing-pad choice (pads layout): its own call, made when padChoiceDue says so.
@@ -378,16 +379,14 @@ async function decideProse(ship, model, startedAt, options) {
   }
   const upstream = await call(options.host, request);
   const answers = upstream.j.answers || {};
-  const controls = proseMap(answers, ship);
-  // Confidence gate (pure safety): when the thrust answer is unsure, keep the previous throttle.
-  const confidence = thrustConfidence(answers);
-  const isNewFlight = !lastThrottle || !(ship.t >= lastThrottle.t);
-  let held = false;
-  if (confidence < THRUST_CUTOFF && !isNewFlight && lastThrottle) {
-    controls.throttle = lastThrottle.throttle;
-    held = true;
-  }
-  lastThrottle = { throttle: controls.throttle, t: ship.t };
+  // Confidence gate (pure safety): unsure answers keep the previous command, roll up a level, or blend.
+  const isNewFlight = !lastControls || !(ship.t >= lastControls.t);
+  const controls = proseMap(answers, ship, {
+    cutoff: THRUST_CUTOFF,
+    mode: GATE_MODE,
+    previous: isNewFlight ? null : lastControls,
+  });
+  lastControls = { throttle: controls.throttle, tvx: controls.tvx, t: ship.t };
   const thrust = controls.throttle > 0 ? controls.throttle : false;
   const result = {
     variant: 'prose',
@@ -399,8 +398,9 @@ async function decideProse(ship, model, startedAt, options) {
     tvx: controls.tvx,
     pad: padChoice,
     answers,
-    thrustConfidence: confidence,
-    held,
+    thrustConfidence: controls.thrustConfidence,
+    sideConfidence: controls.sideConfidence,
+    gated: controls.gated,
     table: PROSE_TABLE,
     probs: probsFor(thrust, controls.tilt),
     usage: usageWithPad(upstream.j.usage, padChoice),

@@ -557,29 +557,77 @@ export function legsAboutToTouch(answers) {
 }
 
 /**
- * Turn the model's three choices into controls.
+ * @typedef {object} ConfidenceGate
+ * @property {number} cutoff   answers with confidence below this are "unsure" (0 = gate off)
+ * @property {'hold' | 'rollup' | 'blend'} mode
+ *   hold   = keep the previous command for that control;
+ *   rollup = report the answer one level up its hierarchy (see ROLLUP), no second call;
+ *   blend  = probability-weighted mix of the options' controls
+ * @property {{ throttle: number, tvx: number } | null} previous  the last command sent (hold mode)
+ */
+
+/**
+ * Coarse levels, one step up each choice's hierarchy, used when the model is unsure.
+ * Thrust: small / medium / large roll up to "some thrust" (about hover); none stays none.
+ * Direction: left / right / none roll up to "not sure which way" = no sideways push (upright).
+ * Speed: fast / slow roll up to "moving" (slow); very_slow / none roll up to "barely" (very_slow).
+ */
+export const ROLLUP = {
+  someThrust: 0.45,
+  speed: { fast: 'slow', slow: 'slow', very_slow: 'very_slow', none: 'none' },
+};
+
+/**
+ * Turn the model's choices into controls, with an optional confidence gate.
  * @param {Record<string, ChoiceAnswer>} answers
  * @param {Ship} ship
- * @returns {{ tvx: number, tilt: Tilt, throttle: number }}  tvx = target sideways speed, m/s
+ * @param {ConfidenceGate} [gate]
+ * @returns {{ tvx: number, tilt: Tilt, throttle: number, thrustConfidence: number, sideConfidence: number, gated: string[] }}
+ *   tvx = target sideways speed, m/s; gated lists the controls the gate changed ("thrust", "side")
  */
-export function proseMap(answers, ship) {
-  const direction = answers.flight_direction?.choice;
-  const speedChoice = answers.flight_velocity?.choice;
+export function proseMap(answers, ship, gate) {
+  const cutoff = gate?.cutoff ?? 0;
+  const mode = gate?.mode ?? 'hold';
+  const thrustConfidence = groupConfidence(answers, THRUST_KEYS);
+  const sideConfidence = groupConfidence(answers, SIDE_KEYS);
+  const thrustUnsure = thrustConfidence < cutoff;
+  const sideUnsure = sideConfidence < cutoff;
+  /** @type {string[]} */
+  const gated = [];
 
+  const direction = answers.flight_direction?.choice;
+  let speedChoice = answers.flight_velocity?.choice;
   let directionSign = 0;
   if (direction === 'right') {
     directionSign = 1;
   } else if (direction === 'left') {
     directionSign = -1;
   }
+  const directionUnsure = answerConfidence(answers.flight_direction) < cutoff;
+  const speedUnsure = answerConfidence(answers.flight_velocity) < cutoff;
+  if (mode === 'rollup' && speedUnsure && speedChoice) {
+    speedChoice = ROLLUP.speed[/** @type {keyof typeof ROLLUP.speed} */ (speedChoice)] ?? speedChoice;
+  }
   const speed = SPEED[/** @type {keyof typeof SPEED} */ (speedChoice)] ?? 0;
-  const targetSidewaysSpeed = directionSign * speed;
+  let targetSidewaysSpeed = directionSign * speed;
+  let noSidewaysPush = false;
+  if (sideUnsure) {
+    gated.push('side');
+    if (mode === 'hold' && gate?.previous) {
+      targetSidewaysSpeed = gate.previous.tvx;
+    } else if (mode === 'blend') {
+      targetSidewaysSpeed = expectedSign(answers.flight_direction) * expectedSpeed(answers.flight_velocity);
+    } else if (mode === 'rollup' && directionUnsure) {
+      noSidewaysPush = true;
+      targetSidewaysSpeed = ship.vx;
+    }
+  }
 
   // Tilt toward the target speed when it is more than 0.4 m/s away.
   const speedGap = targetSidewaysSpeed - ship.vx;
   /** @type {Tilt} */
   let tilt = 'center';
-  if (Math.abs(speedGap) > 0.4) {
+  if (Math.abs(speedGap) > 0.4 && !noSidewaysPush) {
     tilt = speedGap > 0 ? 'right' : 'left';
   }
   // The model's own touchdown call (final approach): when it judges the legs are about to touch,
@@ -589,9 +637,55 @@ export function proseMap(answers, ship) {
     tilt = 'center';
   }
 
-  const throttle = throttleFromAnswers(answers);
+  // Throttle is already the probability-weighted blend of the options (blend mode = no change).
+  let throttle = throttleFromAnswers(answers);
+  if (thrustUnsure) {
+    gated.push('thrust');
+    if (mode === 'hold' && gate?.previous) {
+      throttle = gate.previous.throttle;
+    } else if (mode === 'rollup' && !chosenRising(answers)) {
+      throttle = ROLLUP.someThrust;
+    }
+  }
 
-  return { tvx: targetSidewaysSpeed, tilt, throttle: Math.round(throttle * 100) / 100 };
+  return {
+    tvx: targetSidewaysSpeed,
+    tilt,
+    throttle: Math.round(throttle * 100) / 100,
+    thrustConfidence,
+    sideConfidence,
+    gated,
+  };
+}
+
+/**
+ * Did the thrust answer pick "the lander is rising" (no thrust)?
+ * @param {Record<string, any>} answers
+ */
+function chosenRising(answers) {
+  return answers.downward_thrust_magnitude?.choice === 'none' || answers.descent_rate?.choice === 'rising';
+}
+
+/**
+ * Probability-weighted direction: P(right) − P(left).
+ * @param {any} answer
+ */
+function expectedSign(answer) {
+  const probabilities = answer?.probabilities || {};
+  return (probabilities.right || 0) - (probabilities.left || 0);
+}
+
+/**
+ * Probability-weighted sideways speed, m/s.
+ * @param {any} answer
+ */
+function expectedSpeed(answer) {
+  const probabilities = answer?.probabilities || {};
+  let speed = 0;
+  for (const [band, bandSpeed] of Object.entries(SPEED)) {
+    speed = speed + (probabilities[band] || 0) * bandSpeed;
+  }
+  return speed;
 }
 
 /**
@@ -643,27 +737,48 @@ export function throttleFromAnswers(answers) {
 /** The questions that set the throttle, single or decomposed. */
 const THRUST_KEYS = ['downward_thrust_magnitude', 'altitude_band', 'descent_rate', 'approach_trouble'];
 
+/** The questions that set the sideways target. */
+const SIDE_KEYS = ['flight_direction', 'flight_velocity'];
+
 /**
- * Confidence of the thrust answer: the lowest confidence among the thrust questions asked
- * (a choice's confidence is the probability of its chosen option; a noul's is max(P, 1 − P)).
- * One unsure question is enough to call the whole answer unsure.
- * @param {Record<string, any>} answers
- * @returns {number}  0..1 (1 when no thrust question was answered)
+ * An answer's confidence: a choice's own `confidence` field (how concentrated its probability
+ * spread is, 1 = all on one option); for a noul, 1 − binary entropy of P (P 0.5 → 0, P 0 or 1 → 1).
+ * @param {any} answer
+ * @returns {number}  0..1 (1 when there is no answer)
  */
-export function thrustConfidence(answers) {
+export function answerConfidence(answer) {
+  if (!answer) {
+    return 1;
+  }
+  if (typeof answer.noul === 'number') {
+    const p = Math.min(Math.max(answer.noul, 1e-9), 1 - 1e-9);
+    const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    return 1 - entropy;
+  }
+  if (typeof answer.confidence === 'number') {
+    return answer.confidence;
+  }
+  return answer.probabilities?.[answer.choice] ?? 0;
+}
+
+/**
+ * The lowest confidence among a group of questions (max-style: one unsure answer is enough).
+ * @param {Record<string, any>} answers @param {string[]} keys
+ */
+function groupConfidence(answers, keys) {
   let lowest = 1;
-  for (const key of THRUST_KEYS) {
-    const answer = answers[key];
-    if (!answer) {
-      continue;
+  for (const key of keys) {
+    if (answers[key]) {
+      lowest = Math.min(lowest, answerConfidence(answers[key]));
     }
-    let confidence = 1;
-    if (typeof answer.noul === 'number') {
-      confidence = Math.max(answer.noul, 1 - answer.noul);
-    } else if (answer.choice) {
-      confidence = answer.probabilities?.[answer.choice] ?? 0;
-    }
-    lowest = Math.min(lowest, confidence);
   }
   return lowest;
+}
+
+/**
+ * Confidence of the thrust answer (lowest among the thrust questions asked).
+ * @param {Record<string, any>} answers
+ */
+export function thrustConfidence(answers) {
+  return groupConfidence(answers, THRUST_KEYS);
 }
