@@ -41,6 +41,50 @@ In every mode, **code** maps the answers to controls with a small fixed table (s
 
 Full tables and tuning history: [docs/results.md](docs/results.md).
 
+## Best practices
+
+We tested two TypeSafe cookbooks on the Mac mini (batch27, tev1:4b, prose, seeds 1–6). Details are in [docs/results.md](docs/results.md#batch27-decomposed-thrust-and-the-confidence-gate-mac-mini-tev14b-prose-seeds-16-4s).
+
+- **[Classification using confidence](https://docs.typesafe.ai/cookbooks/classification_using_confidence): adopted.** Each answer has a `confidence` field. When it is below `CONFIDENCE_CUTOFF=0.5`, the code uses the probability-weighted blend (`GATE_MODE=blend`) of the options instead of the top choice alone. This landed **24/24**, against a baseline of **20/24** with the gate off. Hold landed 10/12 and rollup 10/12. Blend at 0.7 landed 8/12 and at 0.9 11/12. The gate adds no extra call, so latency did not go up.
+- **[SDE cascade](https://docs.typesafe.ai/cookbooks/sde_cascade) (breaking a question into smaller ones): tested and dropped.** We split thrust into several small questions. On single questions this scored better (166/180 vs 142/180), but it flew worse: v1 12/24, v2 9/18, v3 14/24. The default is still one `downward_thrust_magnitude` choice. Some yes/no (`noul`) checks use explicit "true = trouble" criteria, and we left those in.
+
+### A real call (final defaults, classic start seed 1)
+
+Captured with `node lander/tools/capture.mjs` (full output: `results/capture-example.json`). Request to `/v1/systemone`:
+
+```json
+{
+  "model": "tev1:4b",
+  "state": "The pad is far off to your right, way in the distance. You are left of the pad.\nYou are drifting away from the pad, slowly.\nThe lander is at high altitude and is descending very slowly.\nThe ground between you and the pad is clear.",
+  "questions": {
+    "flight_direction": { "type": "choice", "instructions": "Determine whether to fly to the right or to the left to get over the pad", "criteria": { "right": "fly to the right, toward the pad that is off to your right", … } },
+    "flight_velocity": { "type": "choice", "instructions": "Determine how fast to fly sideways based on how far off the pad is", "criteria": { "fast": "fly fast if the pad is far off or way in the distance", … } },
+    "downward_thrust_magnitude": { "type": "choice", "instructions": "You are piloting a lunar lander. Determine the magnitude of the thrust needed …", "criteria": { "large": "…", "medium": "…", "small": "very little thrust is needed because the lander is at high altitude, or is descending slowly or very slowly", "none": "no thrust is needed because the lander is rising" } }
+  },
+  "keep_alive": "2h"
+}
+```
+
+Response (probabilities rounded to 4 places):
+
+```json
+{
+  "answers": {
+    "flight_direction": { "choice": "right", "probabilities": { "right": 0.9958, "left": 0.0018, "none": 0.0024 }, "confidence": 0.9729 },
+    "flight_velocity": { "choice": "fast", "probabilities": { "fast": 0.9637, "slow": 0.0330, "very_slow": 0.0025, "none": 0.0008 }, "confidence": 0.8782 },
+    "downward_thrust_magnitude": { "choice": "small", "probabilities": { "large": 0.0004, "medium": 0.0044, "small": 0.9876, "none": 0.0077 }, "confidence": 0.9448 }
+  },
+  "usage": { "input_tokens": 804, "output_tokens": 0 }, …
+}
+```
+
+How the code turns this into controls (`proseMap` in `lander/prose.mjs`):
+
+- All three confidences are at or above 0.5, so the gate changes nothing (`gated: []`).
+- Target sideways speed: direction right (+1) × speed fast (4 m/s) = **+4 m/s**. The ship is far from that speed, so it tilts **right**.
+- Throttle is the probability-weighted sum over none 0 / small 0.3 / medium 0.55 / large 1: 0.0004·1 + 0.0044·0.55 + 0.9876·0.3 ≈ **30%**.
+- Action: `burn_right`. This call took 1587 ms because it was a new scene with no prompt-cache hit.
+
 ## Is the code cheating?
 
 The model answers choice questions. Everything between that answer and the engine is plain code in `lander/pilot-loop.mjs`. Each piece has its own switch (`?lease=1`, `LEASE=1`, …). The HUD lists which assists are on.

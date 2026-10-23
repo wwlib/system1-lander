@@ -257,3 +257,36 @@ Lease and touchdown leveling are the **steering** assists (they push toward a ge
 **Headline:** steering assists off (new default) **22/24** on thrust-nosteer; all assists off **11/24** with **no fuel-outs**. The gap left with all-off is mostly smoothing / prediction / the other non-steering assists, not burn lease or touchdown leveling.
 
 Logs: `results/batch25-ablation-*.log`, `results/batch26-thrust-nosteer-*.log`, `results/batch26-final-nosteer-*.log`, `results/batch26-final-off-*.log`. Table helper: `lander/tools/batchtable.mjs`.
+
+## Batch27: decomposed thrust and the confidence gate (Mac mini, tev1:4b, prose, seeds 1–6, 4/s)
+
+Each answer carries a `confidence` field. The gate marks an answer unsure when its confidence is below `CONFIDENCE_CUTOFF`. `GATE_MODE` then picks what happens: `hold` keeps the previous command, `rollup` moves one level up the choice's hierarchy (no second call), and `blend` uses the probability-weighted mix of the options. Throttle is always the probability-weighted mix, so in practice `blend` only changes the sideways target.
+
+| config | layout | runs | landed | avg score | touch \|vx\| | avg latency |
+|---|---|---|---|---|---|---|
+| base (single thrust choice, gate off) | classic | 2 | 11/12 | 6.38 | 0.66 | 480 / 538 ms |
+| base | pads | 2 | 9/12 | 9.17 | 0.24 | 1004 / 935 ms |
+| **gate-blend-0.5** | classic | 2 | **12/12** | 7.20 | 0.23 | 545 / 493 ms |
+| **gate-blend-0.5** | pads | 2 | **12/12** | 13.38 | 0.17 | 588 / 766 ms |
+| gate-blend-0.7 | classic | 1 | 4/6 | 4.82 | 0.40 | 396 ms |
+| gate-blend-0.7 | pads | 1 | 4/6 | 10.05 | 0.49 | 766 ms |
+| gate-blend-0.9 | classic | 1 | 6/6 | 7.58 | 0.09 | 412 ms |
+| gate-blend-0.9 | pads | 1 | 5/6 | 10.80 | 0.30 | 828 ms |
+| gate-hold-0.5 | classic | 1 | 5/6 | 6.08 | 0.85 | 537 ms |
+| gate-hold-0.5 | pads | 1 | 5/6 | 10.27 | 0.53 | 697 ms |
+| gate-rollup-0.5 | classic | 1 | 5/6 | 6.08 | 0.63 | 497 ms |
+| gate-rollup-0.5 | pads | 1 | 5/6 | 11.62 | 0.36 | 683 ms |
+| decomp (v1) | classic | 2 | 8/12 | 4.71 | 0.46 | |
+| decomp (v1) | pads | 2 | 4/12 | 6.16 | 0.06 | |
+| decomp2 | classic | 2 | 8/12 | 4.13 | 0.84 | |
+| decomp2 | pads | 1 | 1/6 | 3.40 | 0.00 | |
+| decomp3 (thrust table) | classic | 2 | 6/12 | 3.63 | 0.30 | |
+| decomp3 | pads | 2 | 8/12 | 7.72 | 0.52 | |
+
+**Totals:** base 20/24. Gate blend 0.5 24/24, blend 0.7 8/12, blend 0.9 11/12, hold 0.5 10/12, rollup 0.5 10/12. Decomposed thrust: v1 12/24, v2 9/18, v3 14/24. Decomposition did better on single questions (decompprobe 166/180 vs 142/180), but it flew worse every time.
+
+**Cutoff sweep** (`lander/tools/gatesweep.mjs`, offline over the TRACE logs). In gate-off and blend logs, a cutoff of 0.5 marks about 35–45% of thrust answers unsure. At 0.7 the figure is 57–79%, and at 0.9 it is 80–90%. Above 0.5 the gate fires on most calls. We flew only 0.7 and 0.9, and only for blend, because blend was the best mode at 0.5. Neither beat 0.5, and since 0.9 landed more than 0.7, the difference between them is probably noise.
+
+**Kept:** `GATE_MODE=blend`, `CONFIDENCE_CUTOFF=0.5` (new defaults). **Dropped:** decomposed thrust (defaults keep the single `downward_thrust_magnitude` choice), hold, and rollup. **Latency:** the gate makes no extra call. Mean latency was 739 ms for base and 598 ms for blend 0.5, and the gap is run-to-run noise. **Contention:** while these ran, other jobs were active on the Mac (simworld-drive, comfyui-studio scene-storyboard, a progression_batch). Only `tev1:4b` was loaded in Ollama. They may have added latency noise, but they used no other Ollama model.
+
+Logs: `results/batch27-*.log`, `results/batch27-decompprobe.txt`. Example call: `results/capture-example.json` (`lander/tools/capture.mjs`).

@@ -281,11 +281,11 @@ let lastProseCall = null;
 const sameSceneEnabled = process.env.SAME_SCENE_SKIP !== '0';
 
 /**
- * Confidence gate: answers whose `confidence` is below CONFIDENCE_CUTOFF are unsure (0 = off).
- * GATE_MODE: hold (keep the previous command) | rollup (one level up) | blend (probability-weighted).
+ * Confidence gate: answers whose `confidence` is below CONFIDENCE_CUTOFF are unsure (default 0.5; 0 = off).
+ * GATE_MODE: hold (keep the previous command) | rollup (one level up) | blend (probability-weighted; default). Batch27: blend 0.5 landed 24/24 vs 20/24 with the gate off.
  */
-const THRUST_CUTOFF = Number(process.env.CONFIDENCE_CUTOFF ?? 0);
-const GATE_MODE = /** @type {'hold' | 'rollup' | 'blend'} */ (process.env.GATE_MODE || 'hold');
+const THRUST_CUTOFF = Number(process.env.CONFIDENCE_CUTOFF ?? 0.5);
+const GATE_MODE = /** @type {'hold' | 'rollup' | 'blend'} */ (process.env.GATE_MODE || 'blend');
 /** The last command sent (prose mode), for hold mode. @type {{ throttle: number, tvx: number, t: number } | null} */
 let lastControls = null;
 

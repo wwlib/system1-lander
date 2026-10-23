@@ -20,7 +20,7 @@
 //   SAME_SCENE_SKIP=1  reuse the last prose answer for an identical body (< 1 sim s old)
 //   DELAY_MS=0      artificial extra latency added to every reply (simulates a slow host)
 //   TRACE=1         print one line per decision: time, height, speeds, tilt, throttle, choices, scene
-//   CONFIDENCE_CUTOFF=0.7 GATE_MODE=hold|rollup|blend  confidence gate on each answer's confidence (0 = off)
+//   CONFIDENCE_CUTOFF=0.5 GATE_MODE=blend   confidence gate on each answer's confidence (defaults; hold|rollup also; 0 = off)
 //   PROSE_FILE=prose-decomp.json  question set under lander/modes/
 
 import '../env.mjs';
@@ -304,7 +304,7 @@ console.log(
     `engaged: lease ${totals.engagement.leaseEvents}×/${totals.engagement.leaseSeconds.toFixed(1)}s ` +
     `climb ${totals.engagement.climbGuardEvents}×/${totals.engagement.climbGuardSeconds.toFixed(1)}s ` +
     `level ${totals.engagement.levelEvents}×/${totals.engagement.levelSeconds.toFixed(1)}s, ` +
-    `gate ${process.env.GATE_MODE || 'hold'} cutoff ${process.env.CONFIDENCE_CUTOFF || 0}: gated ${totals.held}, ` +
+    `gate ${process.env.GATE_MODE || 'blend'} cutoff ${process.env.CONFIDENCE_CUTOFF ?? 0.5}: gated ${totals.held}, ` +
     `mean thrust confidence ${(totals.confidenceSum / Math.max(1, totals.confidenceCount)).toFixed(2)}` +
     (LAYOUT !== 'classic' ? `, layout ${LAYOUT}, landed on [${totals.pads.join(', ')}]` : ''),
 );
