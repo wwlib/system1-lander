@@ -385,6 +385,7 @@ async function decideProse(ship, model, startedAt, options) {
     cutoff: THRUST_CUTOFF,
     mode: GATE_MODE,
     previous: isNewFlight ? null : lastControls,
+    thrustTable: questionSet.thrust_table,
   });
   lastControls = { throttle: controls.throttle, tvx: controls.tvx, t: ship.t };
   const thrust = controls.throttle > 0 ? controls.throttle : false;

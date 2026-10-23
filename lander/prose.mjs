@@ -21,6 +21,7 @@ import { padsFor, padCenter, targetPad, terrainY } from './sim.mjs';
  *   'approach' (drift toward / away from the pad), 'drift' (drift left / right)
  * @property {Record<string, { type: string, instructions: string, criteria: Record<string, string> }>} questions
  * @property {PadChoiceSet} [pad_choice]  the landing-pad question (pads layout only)
+ * @property {Record<string, Record<string, string>>} [thrust_table]  decomposed thrust: altitude_band × descent_rate → thrust level
  * @property {{ about?: string, questions: Record<string, { type: string, instructions: string, criteria: Record<string, string> }> }} [final_approach]
  *   the questions asked instead of `questions` while the ship is in the final-approach zone
  */
@@ -564,6 +565,7 @@ export function legsAboutToTouch(answers) {
  *   rollup = report the answer one level up its hierarchy (see ROLLUP), no second call;
  *   blend  = probability-weighted mix of the options' controls
  * @property {{ throttle: number, tvx: number } | null} previous  the last command sent (hold mode)
+ * @property {Record<string, Record<string, string>>} [thrustTable]  decomposed thrust table from the question file
  */
 
 /**
@@ -638,7 +640,7 @@ export function proseMap(answers, ship, gate) {
   }
 
   // Throttle is already the probability-weighted blend of the options (blend mode = no change).
-  let throttle = throttleFromAnswers(answers);
+  let throttle = throttleFromAnswers(answers, gate?.thrustTable);
   if (thrustUnsure) {
     gated.push('thrust');
     if (mode === 'hold' && gate?.previous) {
@@ -706,9 +708,10 @@ export const THRUST_TABLE = {
  * Decomposed: expected value of THRUST_TABLE over P(altitude_band) × P(descent_rate); then, when
  * the warning approach_trouble says trouble (P ≥ 0.5) and the lander is not rising, at least medium.
  * @param {Record<string, any>} answers
+ * @param {Record<string, Record<string, string>>} [table]  rows altitude_band, columns descent_rate (default THRUST_TABLE)
  * @returns {number}  0..1
  */
-export function throttleFromAnswers(answers) {
+export function throttleFromAnswers(answers, table = THRUST_TABLE) {
   if (answers.downward_thrust_magnitude) {
     const thrustProbabilities = answers.downward_thrust_magnitude.probabilities || {};
     let throttle = 0;
@@ -720,10 +723,10 @@ export function throttleFromAnswers(answers) {
   const heightProbabilities = answers.altitude_band?.probabilities || {};
   const sinkProbabilities = answers.descent_rate?.probabilities || {};
   let throttle = 0;
-  for (const [height, row] of Object.entries(THRUST_TABLE)) {
+  for (const [height, row] of Object.entries(table)) {
     for (const [sink, level] of Object.entries(row)) {
       const weight = (heightProbabilities[height] || 0) * (sinkProbabilities[sink] || 0);
-      throttle = throttle + weight * LEVEL[level];
+      throttle = throttle + weight * (LEVEL[/** @type {keyof typeof LEVEL} */ (level)] ?? 0);
     }
   }
   const rising = answers.descent_rate?.choice === 'rising';
