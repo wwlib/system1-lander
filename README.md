@@ -46,7 +46,7 @@ Full tables and tuning history: [docs/results.md](docs/results.md).
 We tested two TypeSafe cookbooks on the Mac mini (batch27, tev1:4b, prose, seeds 1–6). Details are in [docs/results.md](docs/results.md#batch27-decomposed-thrust-and-the-confidence-gate-mac-mini-tev14b-prose-seeds-16-4s).
 
 - **[Classification using confidence](https://docs.typesafe.ai/cookbooks/classification_using_confidence): adopted.** Each answer has a `confidence` field. When it is below `CONFIDENCE_CUTOFF=0.5`, the code uses the probability-weighted blend (`GATE_MODE=blend`) of the options instead of the top choice alone. This landed **24/24**, against a baseline of **20/24** with the gate off. Hold landed 10/12 and rollup 10/12. Blend at 0.7 landed 8/12 and at 0.9 11/12. The gate adds no extra call, so latency did not go up.
-- **[SDE cascade](https://docs.typesafe.ai/cookbooks/sde_cascade) (breaking a question into smaller ones): tested and dropped.** We split thrust into several small questions. On single questions this scored better (166/180 vs 142/180), but it flew worse: v1 12/24, v2 9/18, v3 14/24. The default is still one `downward_thrust_magnitude` choice. Some yes/no (`noul`) checks use explicit "true = trouble" criteria, and we left those in.
+- **[SDE cascade](https://docs.typesafe.ai/cookbooks/sde_cascade) (breaking a question into smaller ones): tested and dropped.** We split thrust into several small questions. On single questions this scored better (166/180 vs 142/180), but it flew worse: v1 12/24, v2 9/18, v3 14/24. The default is still one `downward_thrust_magnitude` choice. Its "true = trouble" `noul` warnings exist only in `lander/modes/prose-decomp*.json` (`PROSE_FILE=`).
 
 ### A real call (final defaults, classic start seed 1)
 
